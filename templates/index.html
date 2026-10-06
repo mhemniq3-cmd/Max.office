@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التراخيص المركزية - ماكس برو POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #070b14;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.7); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.07); 
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .glow-purple {
+            box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.25);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+        }
+        .glow-blue {
+            box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.25);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Ambient Glow Background Blobs -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute -top-40 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/3 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-10 right-10 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40 px-4 lg:px-8 py-3.5">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/25 border border-white/10">
+                    👑
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg lg:text-xl font-black tracking-tight text-white">ماكس برو POS</h1>
+                        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border border-blue-500/30">
+                            مركز التراخيص السحابي v2.0
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">إدارة التراخيص والتجديد الفوري عن بُعد وتتبع النسخ التجريبية</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+                <div class="hidden md:flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>سيرفر نشط | حماية Ed25519</span>
+                </div>
+                <button onclick="loadDevices()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 transition text-slate-300 text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 flex items-center gap-1.5" title="تحديث البيانات">
+                    <span id="refreshIcon">🔄</span>
+                    <span class="hidden sm:inline">تحديث</span>
+                </button>
+                <button onclick="openNewModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 transition text-white text-xs lg:text-sm font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-600/25 border border-white/10">
+                    <span>➕</span>
+                    <span>إضافة متجر جديد</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6 relative z-10">
+
+        <!-- Metrics Overview (5 Cards) -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 lg:gap-4">
+            
+            <!-- Total Stores -->
+            <div onclick="setFilter('all')" class="glass-card p-4 rounded-2xl border-t-2 border-t-slate-500 cursor-pointer transition hover:-translate-y-0.5">
+                <div class="flex items-center justify-between text-xs text-slate-400 font-semibold">
+                    <span>🏪 إجمالي المتاجر</span>
+                    <span class="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">الكل</span>
+                </div>
+                <div id="statTotal" class="text-2xl lg:text-3xl font-black text-white mt-2">0</div>
+                <div class="text-[11px] text-slate-500 mt-1">جميع الأجهزة المسجلة</div>
+            </div>
+
+            <!-- Active Trials (New Leads) -->
+            <div onclick="setFilter('trial')" class="glass-card p-4 rounded-2xl border-t-2 border-t-purple-500 cursor-pointer transition hover:-translate-y-0.5 glow-purple">
+                <div class="flex items-center justify-between text-xs text-purple-400 font-semibold">
+                    <span>🟣 نسخ تجريبية</span>
+                    <span class="text-[10px] text-purple-300 bg-purple-950/80 border border-purple-800/80 px-1.5 py-0.5 rounded font-bold">فرص بيع</span>
+                </div>
+                <div id="statTrial" class="text-2xl lg:text-3xl font-black text-purple-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-500 mt-1">متاجر تحت التجربة (14 يوم)</div>
+            </div>
+
+            <!-- Active Paid Subscriptions -->
+            <div onclick="setFilter('active')" class="glass-card p-4 rounded-2xl border-t-2 border-t-emerald-500 cursor-pointer transition hover:-translate-y-0.5 glow-emerald">
+                <div class="flex items-center justify-between text-xs text-emerald-400 font-semibold">
+                    <span>🟢 اشتراكات سارية</span>
+                    <span class="text-[10px] text-emerald-300 bg-emerald-950/80 border border-emerald-800/80 px-1.5 py-0.5 rounded font-bold">معتمد</span>
+                </div>
+                <div id="statActive" class="text-2xl lg:text-3xl font-black text-emerald-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-500 mt-1">مدفوعة وسارية الصلاحية</div>
+            </div>
+
+            <!-- Expiring Soon -->
+            <div onclick="setFilter('soon')" class="glass-card p-4 rounded-2xl border-t-2 border-t-amber-500 cursor-pointer transition hover:-translate-y-0.5">
+                <div class="flex items-center justify-between text-xs text-amber-400 font-semibold">
+                    <span>🟡 يوشك على الانتهاء</span>
+                    <span class="text-[10px] text-amber-300 bg-amber-950/80 border border-amber-800/80 px-1.5 py-0.5 rounded font-bold">تحصيل</span>
+                </div>
+                <div id="statSoon" class="text-2xl lg:text-3xl font-black text-amber-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-500 mt-1">أقل من 14 يوماً متبقية</div>
+            </div>
+
+            <!-- Expired / Suspended -->
+            <div onclick="setFilter('expired')" class="glass-card p-4 rounded-2xl border-t-2 border-t-rose-500 cursor-pointer transition hover:-translate-y-0.5 col-span-2 md:col-span-1">
+                <div class="flex items-center justify-between text-xs text-rose-400 font-semibold">
+                    <span>🔴 منتهية الصلاحية</span>
+                    <span class="text-[10px] text-rose-300 bg-rose-950/80 border border-rose-800/80 px-1.5 py-0.5 rounded font-bold">معلق</span>
+                </div>
+                <div id="statExpired" class="text-2xl lg:text-3xl font-black text-rose-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-500 mt-1">تحتاج تجديد فوري</div>
+            </div>
+
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="glass-card p-3 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            
+            <!-- Quick Category Tabs -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
+                <button onclick="setFilter('all')" id="tab-all" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-blue-600 text-white transition">
+                    الكل (<span id="count-all">0</span>)
+                </button>
+                <button onclick="setFilter('trial')" id="tab-trial" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🟣 تجريبي (<span id="count-trial">0</span>)
+                </button>
+                <button onclick="setFilter('active')" id="tab-active" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🟢 سارٍ (<span id="count-active">0</span>)
+                </button>
+                <button onclick="setFilter('soon')" id="tab-soon" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🟡 ينتهي قريباً (<span id="count-soon">0</span>)
+                </button>
+                <button onclick="setFilter('expired')" id="tab-expired" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🔴 منتهي (<span id="count-expired">0</span>)
+                </button>
+                <button onclick="setFilter('suspended')" id="tab-suspended" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    ⛔ موقوف (<span id="count-suspended">0</span>)
+                </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative w-full md:w-80">
+                <input type="text" id="searchInput" oninput="applyFilters()" placeholder="🔍 ابحث باسم المتجر، الهاتف، أو Machine ID..." 
+                       class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 text-xs lg:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
+                <button onclick="clearSearch()" id="clearSearchBtn" class="absolute left-3 top-2.5 text-slate-500 hover:text-white text-xs hidden">✕</button>
+            </div>
+
+        </div>
+
+        <!-- Devices List Container -->
+        <div id="devicesContainer" class="space-y-3.5">
+            <div class="text-center py-16 text-slate-500 text-sm">
+                <div class="text-3xl mb-2 animate-bounce">⏳</div>
+                جاري الاتصال بسيرفر التراخيص وتحميل بيانات المشتركين...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Register / Add New Store -->
+    <div id="newModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-black text-white flex items-center gap-2">
+                    ➕ تسجيل وتفعيل متجر جديد
+                </h3>
+                <button onclick="closeNewModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+            
+            <div class="space-y-3.5 text-sm">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">اسم المتجر أو العميل *</label>
+                    <input type="text" id="mStoreName" placeholder="مثال: سوبرماركت البركة / هايبرماركت النور" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">معرّف الجهاز (Machine ID) *</label>
+                    <input type="text" id="mMachineId" placeholder="مثال: MP-10D8-B943-8F76-F72B" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">رقم الهاتف (واتساب)</label>
+                        <input type="text" id="mPhone" placeholder="مثال: 07700000000" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">نوع الترخيص الممنوح</label>
+                        <select id="mPlanType" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3 py-2.5 text-white text-xs focus:outline-none focus:border-blue-500">
+                            <option value="trial">🟣 فترة تجريبية مجانية (14 يوماً)</option>
+                            <option value="12" selected>🟢 اشتراك سنوي (12 شهر) - Pro</option>
+                            <option value="1">اشتراك شهري (30 يوم)</option>
+                            <option value="3">اشتراك 3 أشهر</option>
+                            <option value="6">اشتراك نصف سنوي (6 أشهر)</option>
+                            <option value="24">اشتراك سنتان (24 شهراً)</option>
+                            <option value="120">مدى الحياة (Lifetime)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">ملاحظات التحصيل والدفع</label>
+                    <input type="text" id="mNotes" placeholder="مثال: تم التحويل عبر زين كاش / كاش يد بيد" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button onclick="closeNewModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">إلغاء</button>
+                <button onclick="submitNewDevice()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">حفظ وإصدار الترخيص</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/50 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 hidden z-50 text-sm backdrop-blur-xl">
+        <span id="toastIcon" class="text-xl">✅</span>
+        <span id="toastMsg" class="font-bold">تمت العملية بنجاح!</span>
+    </div>
+
+    <script>
+        let allDevices = [];
+        let currentFilter = 'all';
+
+        async function loadDevices() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+            try {
+                const res = await fetch('/api/v1/admin/devices');
+                if (!res.ok) throw new Error('فشل استدعاء البيانات من السيرفر');
+                allDevices = await res.json();
+                updateStats(allDevices);
+                applyFilters();
+            } catch (err) {
+                document.getElementById('devicesContainer').innerHTML = `
+                    <div class="glass-card text-center py-16 rounded-2xl border border-rose-900/50 text-rose-400 text-sm">
+                        ⚠️ تعذر تحميل البيانات من السيرفر: ${err.message}
+                    </div>
+                `;
+            } finally {
+                if (refreshIcon) setTimeout(() => refreshIcon.classList.remove('animate-spin'), 600);
+            }
+        }
+
+        function updateStats(devices) {
+            const total = devices.length;
+            const trial = devices.filter(d => d.is_trial && !d.is_expired && d.status !== 'SUSPENDED').length;
+            const active = devices.filter(d => !d.is_trial && d.status === 'ACTIVE' && !d.is_expired).length;
+            const soon = devices.filter(d => !d.is_expired && d.days_remaining <= 14 && d.status !== 'SUSPENDED').length;
+            const expired = devices.filter(d => d.status === 'SUSPENDED' || d.is_expired).length;
+            const suspended = devices.filter(d => d.status === 'SUSPENDED').length;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statTrial').innerText = trial;
+            document.getElementById('statActive').innerText = active;
+            document.getElementById('statSoon').innerText = soon;
+            document.getElementById('statExpired').innerText = expired;
+
+            document.getElementById('count-all').innerText = total;
+            document.getElementById('count-trial').innerText = trial;
+            document.getElementById('count-active').innerText = active;
+            document.getElementById('count-soon').innerText = soon;
+            document.getElementById('count-expired').innerText = expired;
+            document.getElementById('count-suspended').innerText = suspended;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                btn.className = 'filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            });
+            const activeTab = document.getElementById(`tab-${filter}`);
+            if (activeTab) {
+                activeTab.className = 'filter-tab px-3 py-1.5 rounded-xl font-bold bg-blue-600 text-white transition';
+            }
+            applyFilters();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (clearBtn) {
+                if (query) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            }
+
+            let filtered = allDevices.filter(d => {
+                const matchQuery = !query || 
+                    d.store_name.toLowerCase().includes(query) || 
+                    d.machine_id.toLowerCase().includes(query) || 
+                    (d.phone && d.phone.includes(query)) ||
+                    (d.notes && d.notes.toLowerCase().includes(query));
+
+                let matchStatus = true;
+                if (currentFilter === 'trial') matchStatus = d.is_trial && !d.is_expired && d.status !== 'SUSPENDED';
+                else if (currentFilter === 'active') matchStatus = !d.is_trial && d.status === 'ACTIVE' && !d.is_expired;
+                else if (currentFilter === 'soon') matchStatus = !d.is_expired && d.days_remaining <= 14 && d.status !== 'SUSPENDED';
+                else if (currentFilter === 'expired') matchStatus = (d.is_expired && d.status !== 'SUSPENDED');
+                else if (currentFilter === 'suspended') matchStatus = (d.status === 'SUSPENDED');
+
+                return matchQuery && matchStatus;
+            });
+
+            renderDevices(filtered);
+        }
+
+        function renderDevices(devices) {
+            const container = document.getElementById('devicesContainer');
+            if (!devices.length) {
+                container.innerHTML = `
+                    <div class="glass-card text-center py-16 rounded-3xl border border-slate-800 text-slate-400 text-sm">
+                        <div class="text-3xl mb-2">🔍</div>
+                        لا توجد متاجر مطابقة لمعايير البحث أو التبويب المختار.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = devices.map(d => {
+                const isSuspended = (d.status === 'SUSPENDED');
+                const isTrial = Boolean(d.is_trial);
+                const isExp = Boolean(d.is_expired);
+                
+                // Status Badge & Border Color
+                let statusBadge = '';
+                let cardBorderClass = 'hover:border-slate-700';
+                let progressColor = 'bg-blue-500';
+
+                if (isSuspended) {
+                    statusBadge = '<span class="bg-rose-950/90 text-rose-300 border border-rose-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> موقوف إدارياً</span>';
+                    progressColor = 'bg-rose-600';
+                } else if (isTrial) {
+                    if (isExp) {
+                        statusBadge = '<span class="bg-rose-950/90 text-rose-300 border border-rose-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> انتهت التجربة (تحتاج اشتراك)</span>';
+                        progressColor = 'bg-rose-600';
+                    } else {
+                        statusBadge = `<span class="bg-purple-950/90 text-purple-300 border border-purple-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 glow-purple"><span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> 🟣 نسخة تجريبية (${d.days_remaining} يوم متبقٍ)</span>`;
+                        cardBorderClass = 'border-purple-900/50 hover:border-purple-700/80';
+                        progressColor = 'bg-purple-500';
+                    }
+                } else if (isExp) {
+                    statusBadge = '<span class="bg-rose-950/90 text-rose-300 border border-rose-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 🔴 انتهى الاشتراك</span>';
+                    progressColor = 'bg-rose-600';
+                } else if (d.days_remaining <= 14) {
+                    statusBadge = `<span class="bg-amber-950/90 text-amber-300 border border-amber-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> 🟡 ينتهي قريباً (${d.days_remaining} يوم)</span>`;
+                    progressColor = 'bg-amber-500';
+                } else {
+                    statusBadge = `<span class="bg-emerald-950/90 text-emerald-300 border border-emerald-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> 🟢 سارٍ (${d.days_remaining} يوم)</span>`;
+                    progressColor = 'bg-emerald-500';
+                }
+
+                const cleanPhone = (d.phone || '').replace(/[^0-9]/g, '');
+                const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '';
+                const expDate = (d.expires_at || '').substring(0, 10);
+                const lastSync = d.last_sync_at ? d.last_sync_at.replace('T', ' ').substring(0, 16) : 'لم يتصل بعد';
+                const percent = d.percent_remaining || 0;
+
+                return `
+                    <div class="glass-card p-4 lg:p-5 rounded-3xl transition ${cardBorderClass} flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        
+                        <!-- Left Details Column -->
+                        <div class="space-y-2.5 flex-1">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <h3 class="text-base lg:text-lg font-black text-white flex items-center gap-2">
+                                    <span>🏪</span>
+                                    <span>${d.store_name}</span>
+                                </h3>
+                                ${statusBadge}
+                                <span class="text-xs bg-slate-800/90 text-slate-300 px-2.5 py-0.5 rounded-lg border border-slate-700/80 font-semibold">${d.plan_name_ar}</span>
+                            </div>
+
+                            <!-- Progress Meter -->
+                            <div class="w-full max-w-md bg-slate-800/60 h-1.5 rounded-full overflow-hidden">
+                                <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${percent}%;"></div>
+                            </div>
+
+                            <!-- Hardware & Meta Grid -->
+                            <div class="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
+                                <span class="flex items-center gap-1.5 font-mono text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800">
+                                    💻 ${d.machine_id}
+                                    <button onclick="copyText('${d.machine_id}', 'تم نسخ معرّف الجهاز')" class="text-blue-400 hover:text-blue-300 ml-1 font-sans" title="نسخ المعرّف">📋</button>
+                                </span>
+
+                                ${cleanPhone ? `
+                                    <a href="${waLink}" target="_blank" class="flex items-center gap-1 text-emerald-400 hover:underline font-semibold bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-1 rounded-lg">
+                                        📱 ${d.phone} (واتساب)
+                                    </a>
+                                ` : ''}
+
+                                <span>📅 الانتهاء: <strong class="text-slate-200">${expDate}</strong></span>
+                                <span>☁️ آخر مزامنة: <strong class="text-slate-300">${lastSync}</strong></span>
+                            </div>
+
+                            ${d.notes ? `<div class="text-[11px] text-slate-400 flex items-center gap-1.5"><span>📝</span> <span>ملاحظة: ${d.notes}</span></div>` : ''}
+                        </div>
+
+                        <!-- Right Actions Suite -->
+                        <div class="flex items-center gap-2 flex-wrap lg:justify-end">
+                            ${isTrial ? `
+                                <!-- Trial Actions -->
+                                <button onclick="renewDevice('${d.machine_id}', 12)" 
+                                        class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl active:scale-95 transition shadow-lg shadow-purple-600/30 flex items-center gap-1.5 border border-white/10">
+                                    <span>✨ ترقية لاشتراك سنوي</span>
+                                </button>
+                                <button onclick="extendTrial('${d.machine_id}', 7)" 
+                                        class="bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-xs px-3 py-2.5 rounded-xl border border-purple-800/50 active:scale-95 transition">
+                                    + تمديد تجريبي (7 أيام)
+                                </button>
+                            ` : `
+                                <!-- Active Actions -->
+                                <button onclick="renewDevice('${d.machine_id}', 12)" 
+                                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl active:scale-95 transition shadow-lg shadow-blue-600/30 flex items-center gap-1.5 border border-white/10">
+                                    <span>⚡ تجديد سنة (12 شهر)</span>
+                                </button>
+                                <button onclick="renewDevice('${d.machine_id}', 1)" 
+                                        class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3 py-2.5 rounded-xl border border-slate-700 active:scale-95 transition">
+                                    + شهر
+                                </button>
+                            `}
+
+                            <!-- Universal Actions -->
+                            <button onclick="copyManualLicense('${d.current_token}', '${d.store_name}', '${expDate}')" 
+                                    class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2.5 rounded-xl border border-slate-700 active:scale-95 transition flex items-center gap-1" title="نسخ رسالة التفعيل للواتساب للمحلات بدون إنترنت">
+                                <span>📋</span>
+                                <span class="hidden sm:inline">نسخ الكود</span>
+                            </button>
+
+                            <button onclick="toggleSuspend('${d.machine_id}')" 
+                                    class="bg-slate-800 hover:bg-rose-950 text-rose-300 text-xs px-2.5 py-2.5 rounded-xl border border-slate-700 active:scale-95 transition" title="${isSuspended ? 'إعادة تنشيط المتجر' : 'إيقاف المتجر مؤقتاً'}">
+                                ${isSuspended ? '🟢 تنشيط' : '⛔ إيقاف'}
+                            </button>
+
+                            <button onclick="deleteDeviceConfirm('${d.machine_id}')" 
+                                    class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 text-xs flex items-center justify-center transition border border-slate-700/60" title="حذف الجهاز">
+                                🗑️
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function renewDevice(machineId, months) {
+            try {
+                const res = await fetch('/api/v1/admin/renew', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machine_id: machineId, months: months })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر التجديد');
+                showToast(`🎉 تم ترقية وتجديد اشتراك [${data.store_name}] بنجاح حتى ${data.expires_at.substring(0, 10)}! سيتجدد في برنامج العميل فور اتصاله.`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ أثناء التجديد: ${err.message}`, '❌');
+            }
+        }
+
+        async function extendTrial(machineId, days) {
+            try {
+                const res = await fetch('/api/v1/admin/extend_trial', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machine_id: machineId, days: days })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر تمديد التجربة');
+                showToast(`🟣 تم تمديد الفترة التجريبية لمتجر [${data.store_name}] لمدة ${days} أيام إضافية!`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        async function toggleSuspend(machineId) {
+            try {
+                const res = await fetch('/api/v1/admin/suspend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machine_id: machineId })
+                });
+                const data = await res.json();
+                showToast(`تم تعديل حالة الجهاز إلى: ${data.status}`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        async function deleteDeviceConfirm(machineId) {
+            if (!confirm(`هل أنت متأكد من حذف الجهاز (${machineId}) من السيرفر نهائياً؟`)) return;
+            try {
+                const res = await fetch('/api/v1/admin/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machine_id: machineId })
+                });
+                showToast(`تم حذف الجهاز بنجاح.`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        function openNewModal() {
+            document.getElementById('newModal').classList.remove('hidden');
+        }
+
+        function closeNewModal() {
+            document.getElementById('newModal').classList.add('hidden');
+        }
+
+        async function submitNewDevice() {
+            const storeName = document.getElementById('mStoreName').value.trim();
+            const machineId = document.getElementById('mMachineId').value.trim().toUpperCase();
+            const phone = document.getElementById('mPhone').value.trim();
+            const planType = document.getElementById('mPlanType').value;
+            const notes = document.getElementById('mNotes').value.trim();
+
+            if (!storeName || !machineId) {
+                alert('يرجى إدخال اسم المتجر ومعرّف الجهاز (Machine ID).');
+                return;
+            }
+
+            const isTrial = (planType === 'trial');
+            const months = isTrial ? 0 : parseInt(planType) || 12;
+            const status = isTrial ? 'TRIAL' : 'ACTIVE';
+
+            try {
+                const res = await fetch('/api/v1/admin/devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store_name: storeName,
+                        machine_id: machineId,
+                        phone: phone,
+                        status: status,
+                        months: months,
+                        notes: notes
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر إضافة المتجر');
+                closeNewModal();
+                showToast(`🎉 تم حفظ وتسجيل متجر [${storeName}] بنجاح!`);
+                loadDevices();
+            } catch (err) {
+                alert(`خطأ: ${err.message}`);
+            }
+        }
+
+        function copyText(text, msg) {
+            navigator.clipboard.writeText(text);
+            showToast(msg || 'تم النسخ للحافظة!');
+        }
+
+        function copyManualLicense(token, storeName, expDate) {
+            const msg = `🎉 تم إصدار ترخيص برنامج ماكس برو بنجاح!
+🏪 اسم المتجر: ${storeName}
+📅 تاريخ الانتهاء: ${expDate}
+
+🔑 كود الترخيص اليدوي:
+${token}
+
+📝 طريقة التفعيل السريعة:
+1. افتح برنامج ماكس برو.
+2. اضغط على شارة (الترخيص) في أعلى الشاشة.
+3. الصق كود الترخيص واضغط زر (تفعيل كود الترخيص اليدوي).`;
+            navigator.clipboard.writeText(msg);
+            showToast('📋 تم نسخ كود الترخيص ورسالة الواتساب الجاهزة!');
+        }
+
+        function showToast(msg, icon = '✅') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastIcon').innerText = icon;
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 4500);
+        }
+
+        // Auto-refresh every 20 seconds
+        loadDevices();
+        setInterval(loadDevices, 20000);
+    </script>
+</body>
+</html>

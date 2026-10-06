@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: maxpro-license-server
+    runtime: python
+    buildCommand: pip install -r cloud_server/requirements.txt
+    startCommand: uvicorn cloud_server.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      # - key: MAXPRO_MASTER_PRIVATE_KEY_B64
+      #   sync: false
