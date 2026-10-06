@@ -14,11 +14,13 @@ try:
         delete_device,
         extend_trial,
         get_device,
+        get_setting,
         init_db,
         list_devices,
         record_sync,
         register_or_create_device,
         renew_device,
+        set_setting,
         toggle_suspend,
     )
 except ImportError:
@@ -26,11 +28,13 @@ except ImportError:
         delete_device,
         extend_trial,
         get_device,
+        get_setting,
         init_db,
         list_devices,
         record_sync,
         register_or_create_device,
         renew_device,
+        set_setting,
         toggle_suspend,
     )
 
@@ -57,8 +61,8 @@ security = HTTPBasic(auto_error=False)
 
 
 def get_admin_credentials():
-    username = os.environ.get("ADMIN_USERNAME", "admin")
-    password = os.environ.get("ADMIN_PASSWORD", "maxpro@2026")
+    username = get_setting("admin_username", os.environ.get("ADMIN_USERNAME", "admin"))
+    password = get_setting("admin_password", os.environ.get("ADMIN_PASSWORD", "maxpro@2026"))
     api_key = os.environ.get("ADMIN_API_KEY", "")
     return username, password, api_key
 
@@ -74,10 +78,15 @@ def verify_admin(
 
     expected_user, expected_pass, expected_key = get_admin_credentials()
 
+    # Support X-Admin-Password header (for in-browser AJAX)
+    header_pass = request.headers.get("X-Admin-Password", "")
+    if header_pass and secrets.compare_digest(header_pass.encode("utf-8"), expected_pass.encode("utf-8")):
+        return expected_user
+
     # Support X-Admin-Key header (for automated scripts or webhooks)
     req_key = request.headers.get("X-Admin-Key", "")
     if expected_key and req_key and secrets.compare_digest(req_key, expected_key):
-        return "admin"
+        return expected_user
 
     if credentials:
         user_ok = secrets.compare_digest(
@@ -140,6 +149,16 @@ class AdminExtendTrialRequest(BaseModel):
     days: int = 7
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 class ActionRequest(BaseModel):
     machine_id: str
 
@@ -157,11 +176,35 @@ async def health_check():
 
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_dashboard(user: str = Depends(verify_admin)):
+async def admin_dashboard():
     if not INDEX_HTML_PATH.exists():
         return HTMLResponse("<h3>Dashboard template not found.</h3>", status_code=404)
     content = INDEX_HTML_PATH.read_text(encoding="utf-8")
     return HTMLResponse(content)
+
+
+@app.post("/api/v1/admin/login")
+async def admin_login(req: LoginRequest):
+    expected_user, expected_pass, _ = get_admin_credentials()
+    user_ok = secrets.compare_digest(req.username.strip().encode("utf-8"), expected_user.encode("utf-8"))
+    pass_ok = secrets.compare_digest(req.password.strip().encode("utf-8"), expected_pass.encode("utf-8"))
+    if not (user_ok and pass_ok):
+        raise HTTPException(status_code=401, detail="اسم المستخدم أو كلمة المرور غير صحيحة.")
+    return {"success": True, "username": expected_user}
+
+
+@app.post("/api/v1/admin/change_password")
+async def admin_change_password(req: ChangePasswordRequest, user: str = Depends(verify_admin)):
+    expected_user, expected_pass, _ = get_admin_credentials()
+    if not secrets.compare_digest(req.current_password.encode("utf-8"), expected_pass.encode("utf-8")):
+        raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة.")
+
+    new_pass = req.new_password.strip()
+    if len(new_pass) < 4:
+        raise HTTPException(status_code=400, detail="كلمة المرور الجديدة يجب ألا تقل عن 4 خانات.")
+
+    set_setting("admin_password", new_pass)
+    return {"success": True, "message": "تم تغيير كلمة المرور بنجاح! استخدم الرمز الجديد في المرات القادمة."}
 
 
 @app.post("/api/v1/license/sync")

@@ -46,6 +46,34 @@ def init_db(db_path: Optional[Path] = None) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_machine_id ON devices (machine_id)"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS server_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
+
+
+def get_setting(key: str, default: str = "", db_path: Optional[Path] = None) -> str:
+    conn = get_connection(db_path)
+    row = conn.execute("SELECT value FROM server_settings WHERE key = ?", (key,)).fetchone()
+    if row:
+        return str(row["value"])
+    return default
+
+
+def set_setting(key: str, value: str, db_path: Optional[Path] = None) -> None:
+    conn = get_connection(db_path)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO server_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value
+            """,
+            (key, str(value)),
+        )
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
