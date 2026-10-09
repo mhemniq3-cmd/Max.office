@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: maxpro-license-server
+    runtime: python
+    buildCommand: pip install -r cloud_server/requirements.txt
+    startCommand: uvicorn cloud_server.app:app --host 0.0.0.0 --port $PORT
+    # Persistent Disk (Uncomment if using a paid Render Starter instance for 100% persistent disk):
+    # disk:
+    #   name: license-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        value: maxpro@2026
+      # Set when using persistent disk mount:
+      # - key: MAXPRO_LICENSE_DB_PATH
+      #   value: /var/data/licenses.db

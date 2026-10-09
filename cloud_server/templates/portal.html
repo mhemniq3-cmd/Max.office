@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>بوابة المالك للمبيعات - ماكس برو POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #070b14;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-green {
+            box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.2);
+        }
+        .glow-blue {
+            box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.2);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white pb-8">
+
+    <!-- Ambient Glow Background Blobs -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute -top-32 right-1/4 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-10 left-10 w-80 h-80 bg-emerald-600/15 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40 px-4 py-3.5">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-xl shadow-lg shadow-emerald-600/25 border border-white/10">
+                    📱
+                </div>
+                <div>
+                    <h1 class="text-base font-black text-white leading-tight">بوابة صاحب المحل</h1>
+                    <p class="text-[11px] text-slate-400">متابعة المبيعات والأرباح الحية عن بُعد</p>
+                </div>
+            </div>
+
+            <button onclick="refreshData()" id="refreshBtn" class="bg-slate-900 active:scale-95 transition text-slate-300 text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 flex items-center gap-1.5" title="تحديث البيانات">
+                <span id="refreshIcon">🔄</span>
+                <span>تحديث</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-md w-full mx-auto px-4 py-5 space-y-4 relative z-10">
+
+        <!-- PIN Screen (if not authenticated) -->
+        <div id="pinScreen" class="glass-card p-6 rounded-3xl space-y-4 text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-800/90 flex items-center justify-center text-2xl border border-slate-700">
+                🔒
+            </div>
+            <div class="space-y-1">
+                <h2 class="text-lg font-black text-white">تسجيل الدخول لبوابة المتجر</h2>
+                <p class="text-xs text-slate-400">أدخل معرّف الجهاز ورمز المرور السري (PIN)</p>
+            </div>
+
+            <div class="space-y-3 text-right text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">معرّف الجهاز (Machine ID):</label>
+                    <input type="text" id="inputMachineId" placeholder="MP-XXXX-XXXX-XXXX" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">رمز الدخول (PIN):</label>
+                    <input type="password" id="inputPin" placeholder="••••" maxlength="8" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono text-center text-lg tracking-widest focus:outline-none focus:border-blue-500" onkeydown="if(event.key==='Enter') submitPinLogin()">
+                </div>
+                <div id="pinError" class="text-rose-400 text-[11px] text-center hidden font-bold"></div>
+            </div>
+
+            <button onclick="submitPinLogin()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition active:scale-95">
+                دخول لعرض المبيعات ↵
+            </button>
+        </div>
+
+        <!-- Dashboard Content Screen (shown once verified) -->
+        <div id="dashScreen" class="hidden space-y-4">
+
+            <!-- Store Banner Card -->
+            <div class="glass-card p-4 rounded-3xl space-y-2 border-t-2 border-t-emerald-500 glow-green">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-black text-white flex items-center gap-2">
+                            <span>🏪</span>
+                            <span id="storeNameText">متجر</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 font-semibold" id="branchText">الفرع الرئيسي</p>
+                    </div>
+                    <div id="onlineBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                        جاري الفحص...
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-400 flex items-center justify-between pt-2 border-t border-slate-800">
+                    <span>آخر مزامنة من الكاشير:</span>
+                    <strong class="text-slate-300 font-mono" id="lastSyncText">--</strong>
+                </div>
+            </div>
+
+            <!-- 4 Major KPI Cards -->
+            <div class="grid grid-cols-2 gap-3">
+
+                <!-- 1. Today's Sales -->
+                <div class="glass-card p-4 rounded-3xl border-t-2 border-t-blue-500 glow-blue space-y-1">
+                    <div class="flex items-center justify-between text-xs text-blue-400 font-bold">
+                        <span>💰 مبيعات اليوم</span>
+                        <span>اليوم</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-white font-mono" id="kpiSales">0</div>
+                    <p class="text-[10px] text-slate-400">إجمالي الفواتير النقدية والآجلة</p>
+                </div>
+
+                <!-- 2. Today's Net Profit -->
+                <div class="glass-card p-4 rounded-3xl border-t-2 border-t-emerald-500 glow-green space-y-1">
+                    <div class="flex items-center justify-between text-xs text-emerald-400 font-bold">
+                        <span>📈 صافي الأرباح</span>
+                        <span>تقديري</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-emerald-400 font-mono" id="kpiProfit">0</div>
+                    <p class="text-[10px] text-slate-400">هامش الربح بعد خصم التكلفة</p>
+                </div>
+
+                <!-- 3. Invoices Count -->
+                <div class="glass-card p-4 rounded-3xl border-t-2 border-t-purple-500 space-y-1">
+                    <div class="flex items-center justify-between text-xs text-purple-400 font-bold">
+                        <span>🧾 عدد الفواتير</span>
+                        <span>طلب</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-white font-mono" id="kpiInvoices">0</div>
+                    <p class="text-[10px] text-slate-400">العمليات المنفذة في الكاشير</p>
+                </div>
+
+                <!-- 4. Cash Drawer -->
+                <div class="glass-card p-4 rounded-3xl border-t-2 border-t-amber-500 space-y-1">
+                    <div class="flex items-center justify-between text-xs text-amber-400 font-bold">
+                        <span>💵 نقدية الصندوق</span>
+                        <span>الكاش</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-amber-300 font-mono" id="kpiCash">0</div>
+                    <p class="text-[10px] text-slate-400">المبلغ الفعلي داخل الدرج</p>
+                </div>
+
+            </div>
+
+            <!-- License Info Card -->
+            <div class="glass-card p-4 rounded-3xl space-y-2 text-xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">صلاحية ترخيص البرنامج:</span>
+                    <span class="font-bold text-emerald-400" id="licPlanText">سارٍ</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">تاريخ الانتهاء:</span>
+                    <span class="font-bold text-white font-mono" id="licExpText">--</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">الأيام المتبقية:</span>
+                    <span class="font-bold text-blue-400" id="licDaysText">--</span>
+                </div>
+            </div>
+
+            <!-- Quick Action Links -->
+            <div class="flex items-center gap-2 pt-1">
+                <button onclick="promptChangePin()" class="flex-1 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-800 transition">
+                    🔑 تغيير رمز الـ PIN
+                </button>
+                <button onclick="logoutPortal()" class="py-2.5 px-4 rounded-2xl bg-slate-900 border border-rose-900/40 text-rose-400 text-xs font-bold hover:bg-rose-950/60 transition">
+                    خروج
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function getUrlParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        let currentMid = getUrlParam('mid') || localStorage.getItem('portal_mid') || '';
+        let currentPin = localStorage.getItem('portal_pin') || '';
+
+        if (currentMid) {
+            document.getElementById('inputMachineId').value = currentMid;
+        }
+
+        async function submitPinLogin() {
+            const mid = document.getElementById('inputMachineId').value.trim().toUpperCase();
+            const pin = document.getElementById('inputPin').value.trim();
+            const errDiv = document.getElementById('pinError');
+            errDiv.classList.add('hidden');
+
+            if (!mid || !pin) {
+                errDiv.innerText = 'يرجى إدخال معرّف الجهاز ورمز PIN.';
+                errDiv.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/v1/portal/data?machine_id=${encodeURIComponent(mid)}&pin=${encodeURIComponent(pin)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'رمز الدخول أو معرّف الجهاز غير صحيح');
+
+                currentMid = mid;
+                currentPin = pin;
+                localStorage.setItem('portal_mid', mid);
+                localStorage.setItem('portal_pin', pin);
+
+                renderPortalData(data);
+                document.getElementById('pinScreen').classList.add('hidden');
+                document.getElementById('dashScreen').classList.remove('hidden');
+            } catch (err) {
+                errDiv.innerText = err.message;
+                errDiv.classList.remove('hidden');
+            }
+        }
+
+        async function refreshData() {
+            if (!currentMid || !currentPin) return;
+            const icon = document.getElementById('refreshIcon');
+            if (icon) icon.classList.add('animate-spin');
+
+            try {
+                const res = await fetch(`/api/v1/portal/data?machine_id=${encodeURIComponent(currentMid)}&pin=${encodeURIComponent(currentPin)}`);
+                if (res.status === 401) {
+                    logoutPortal();
+                    return;
+                }
+                const data = await res.json();
+                if (res.ok) renderPortalData(data);
+            } catch(e) {
+                console.error(e);
+            } finally {
+                if (icon) setTimeout(() => icon.classList.remove('animate-spin'), 600);
+            }
+        }
+
+        function formatNumber(num) {
+            return Number(num || 0).toLocaleString('en-US');
+        }
+
+        function renderPortalData(d) {
+            document.getElementById('storeNameText').innerText = d.store_name || 'متجر';
+            document.getElementById('branchText').innerText = d.branch_name ? `🏢 فرع: ${d.branch_name}` : 'الفرع الرئيسي';
+
+            // Numbers
+            document.getElementById('kpiSales').innerText = formatNumber(d.today_sales);
+            document.getElementById('kpiProfit').innerText = formatNumber(d.today_profit);
+            document.getElementById('kpiInvoices').innerText = formatNumber(d.today_invoices);
+            document.getElementById('kpiCash').innerText = formatNumber(d.cash_in_drawer);
+
+            // Last sync
+            const syncTime = d.last_sync_at ? d.last_sync_at.replace('T', ' ').substring(0, 16) : 'لم يتصل بعد';
+            document.getElementById('lastSyncText').innerText = syncTime;
+
+            // Online indicator
+            let badge = document.getElementById('onlineBadge');
+            if (d.last_sync_at) {
+                const diffMin = (Date.now() - new Date(d.last_sync_at).getTime()) / 60000;
+                if (diffMin <= 15) {
+                    badge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1.5';
+                    badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> متصل الآن';
+                } else if (diffMin <= 1440) {
+                    badge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-950 text-blue-300 border border-blue-800';
+                    badge.innerHTML = '🔵 نشط اليوم';
+                } else {
+                    badge.className = 'text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+                    badge.innerHTML = '⚪ غير متصل';
+                }
+            } else {
+                badge.className = 'text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+                badge.innerHTML = '⚪ غير متصل';
+            }
+
+            // License
+            document.getElementById('licExpText').innerText = (d.expires_at || '').substring(0, 10);
+            document.getElementById('licDaysText').innerText = `${d.days_remaining} يوم متبقٍ`;
+            document.getElementById('licPlanText').innerText = d.is_expired ? '🔴 منتهي الصلاحية' : `🟢 ${d.plan_name_ar || 'سارٍ'}`;
+        }
+
+        async function promptChangePin() {
+            const oldP = prompt('أدخل رمز PIN الحالي:');
+            if (!oldP) return;
+            const newP = prompt('أدخل رمز PIN الجديد (4 إلى 8 أرقام):');
+            if (!newP || newP.length < 4) {
+                alert('الرمز الجديد يجب ألا يقل عن 4 أرقام.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/portal/change_pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        machine_id: currentMid,
+                        old_pin: oldP,
+                        new_pin: newP
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'فشل تغيير الرمز');
+                currentPin = newP;
+                localStorage.setItem('portal_pin', newP);
+                alert('🎉 تم تغيير رمز PIN بنجاح!');
+            } catch(e) {
+                alert(`خطأ: ${e.message}`);
+            }
+        }
+
+        function logoutPortal() {
+            localStorage.removeItem('portal_pin');
+            currentPin = '';
+            document.getElementById('dashScreen').classList.add('hidden');
+            document.getElementById('pinScreen').classList.remove('hidden');
+        }
+
+        // Auto login if credentials exist in localStorage
+        if (currentMid && currentPin) {
+            submitPinLogin();
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التراخيص المركزية - ماكس برو POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #070b14;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.78); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.16);
+        }
+        .glow-purple {
+            box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.25);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+        }
+        .glow-blue {
+            box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.25);
+        }
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090e1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Ambient Glow Background Blobs -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute -top-40 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/3 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-10 right-10 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-xl sticky top-0 z-40 px-4 lg:px-8 py-3.5">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Logo & Brand Info -->
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/25 border border-white/10">
+                    👑
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg lg:text-xl font-black tracking-tight text-white">ماكس برو POS</h1>
+                        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border border-blue-500/30">
+                            لوحة التراخيص المركزية
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">إدارة التراخيص والتجديد المخصص بالأيام وتتبع المشتركين عن بُعد</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <button onclick="loadDevices()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 transition text-slate-300 text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 flex items-center gap-1.5" title="تحديث البيانات">
+                    <span id="refreshIcon">🔄</span>
+                    <span class="hidden md:inline">تحديث</span>
+                </button>
+
+                <button onclick="openAuditModal()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 transition text-purple-300 text-xs font-bold px-3 py-2 rounded-xl border border-purple-500/30 flex items-center gap-1.5" title="سجل حركات وتدقيق العمليات">
+                    <span>📋</span>
+                    <span class="hidden md:inline">سجل العمليات</span>
+                </button>
+
+                <button onclick="openTelegramModal()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 transition text-sky-400 text-xs font-bold px-3 py-2 rounded-xl border border-sky-500/30 flex items-center gap-1.5" title="إعدادات بوت تيليغرام للإشعارات الفورية">
+                    <span>🤖</span>
+                    <span class="hidden md:inline">بوت تيليغرام</span>
+                </button>
+
+                <button onclick="exportCSV()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 transition text-emerald-400 text-xs font-bold px-3 py-2 rounded-xl border border-emerald-500/30 flex items-center gap-1.5" title="تصدير كشف المشتركين إلى ملف Excel">
+                    <span>📊</span>
+                    <span class="hidden md:inline">تصدير Excel</span>
+                </button>
+
+                <button onclick="openChangePasswordModal()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 transition text-amber-300 text-xs font-bold px-3 py-2 rounded-xl border border-amber-500/30 flex items-center gap-1.5" title="تغيير رمز لوحة التحكم">
+                    <span>🔑</span>
+                    <span class="hidden sm:inline">الرمز</span>
+                </button>
+
+                <button onclick="openNewModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 transition text-white text-xs lg:text-sm font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-600/25 border border-white/10">
+                    <span>➕</span>
+                    <span>إضافة متجر</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6 relative z-10">
+
+        <!-- Metrics Overview (5 Cards) -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 lg:gap-4">
+            
+            <div onclick="setFilter('all')" class="glass-card p-4 rounded-2xl border-t-2 border-t-slate-500 cursor-pointer transition hover:-translate-y-0.5">
+                <div class="flex items-center justify-between text-xs text-slate-400 font-semibold">
+                    <span>🏪 إجمالي المتاجر</span>
+                    <span class="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-bold">الكل</span>
+                </div>
+                <div id="statTotal" class="text-2xl lg:text-3xl font-black text-white mt-2">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">جميع الأجهزة المسجلة</div>
+            </div>
+
+            <div onclick="setFilter('trial')" class="glass-card p-4 rounded-2xl border-t-2 border-t-purple-500 cursor-pointer transition hover:-translate-y-0.5 glow-purple">
+                <div class="flex items-center justify-between text-xs text-purple-400 font-semibold">
+                    <span>🟣 نسخ تجريبية</span>
+                    <span class="text-[10px] text-purple-300 bg-purple-950/80 border border-purple-800/80 px-1.5 py-0.5 rounded font-bold">فرص بيع</span>
+                </div>
+                <div id="statTrial" class="text-2xl lg:text-3xl font-black text-purple-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">متاجر تحت التجربة</div>
+            </div>
+
+            <div onclick="setFilter('active')" class="glass-card p-4 rounded-2xl border-t-2 border-t-emerald-500 cursor-pointer transition hover:-translate-y-0.5 glow-emerald">
+                <div class="flex items-center justify-between text-xs text-emerald-400 font-semibold">
+                    <span>🟢 اشتراكات سارية</span>
+                    <span class="text-[10px] text-emerald-300 bg-emerald-950/80 border border-emerald-800/80 px-1.5 py-0.5 rounded font-bold">معتمد</span>
+                </div>
+                <div id="statActive" class="text-2xl lg:text-3xl font-black text-emerald-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">مدفوعة وسارية الصلاحية</div>
+            </div>
+
+            <div onclick="setFilter('soon')" class="glass-card p-4 rounded-2xl border-t-2 border-t-amber-500 cursor-pointer transition hover:-translate-y-0.5">
+                <div class="flex items-center justify-between text-xs text-amber-400 font-semibold">
+                    <span>🟡 يوشك على الانتهاء</span>
+                    <span class="text-[10px] text-amber-300 bg-amber-950/80 border border-amber-800/80 px-1.5 py-0.5 rounded font-bold">تحصيل</span>
+                </div>
+                <div id="statSoon" class="text-2xl lg:text-3xl font-black text-amber-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">أقل من 14 يوماً متبقية</div>
+            </div>
+
+            <div onclick="setFilter('expired')" class="glass-card p-4 rounded-2xl border-t-2 border-t-rose-500 cursor-pointer transition hover:-translate-y-0.5 col-span-2 md:col-span-1">
+                <div class="flex items-center justify-between text-xs text-rose-400 font-semibold">
+                    <span>🔴 منتهية الصلاحية</span>
+                    <span class="text-[10px] text-rose-300 bg-rose-950/80 border border-rose-800/80 px-1.5 py-0.5 rounded font-bold">معلق</span>
+                </div>
+                <div id="statExpired" class="text-2xl lg:text-3xl font-black text-rose-400 mt-2">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">تحتاج تجديد فوري</div>
+            </div>
+
+        </div>
+
+        <!-- Filter, Search & Sort Toolbar -->
+        <div class="glass-card p-3.5 rounded-2xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 text-xs">
+                <button onclick="setFilter('all')" id="tab-all" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-blue-600 text-white transition">
+                    الكل (<span id="count-all">0</span>)
+                </button>
+                <button onclick="setFilter('active')" id="tab-active" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🟢 سارٍ (<span id="count-active">0</span>)
+                </button>
+                <button onclick="setFilter('trial')" id="tab-trial" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🟣 تجريبي (<span id="count-trial">0</span>)
+                </button>
+                <button onclick="setFilter('soon')" id="tab-soon" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🟡 ينتهي قريباً (<span id="count-soon">0</span>)
+                </button>
+                <button onclick="setFilter('expired')" id="tab-expired" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    🔴 منتهي (<span id="count-expired">0</span>)
+                </button>
+                <button onclick="setFilter('suspended')" id="tab-suspended" class="filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    ⛔ موقوف (<span id="count-suspended">0</span>)
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <select id="sortBy" onchange="applyFilters()" class="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-300 focus:outline-none focus:border-blue-500">
+                    <option value="sort_sync">⚡ الأحدث نشاطاً (مزامنة)</option>
+                    <option value="sort_exp_asc">⏳ الأقرب انتهاءً</option>
+                    <option value="sort_days_desc">👑 الأطول صلاحية</option>
+                    <option value="sort_name">🔤 اسم المتجر (أبجدياً)</option>
+                </select>
+
+                <!-- Protected Search Input (Guarded against browser credential autofill) -->
+                <div class="relative flex-1 lg:w-72">
+                    <input type="search" id="searchInput" oninput="applyFilters()" 
+                           placeholder="🔍 ابحث باسم، فرع، هاتف، أو Machine ID..." 
+                           autocomplete="off" name="search_store_query_nofill" data-lpignore="true" spellcheck="false"
+                           class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
+                    <button onclick="clearSearch()" id="clearSearchBtn" class="absolute left-3 top-2.5 text-slate-500 hover:text-white text-xs hidden">✕</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Devices List Container -->
+        <div id="devicesContainer" class="space-y-3.5">
+            <div class="text-center py-16 text-slate-500 text-sm">
+                <div class="text-3xl mb-2 animate-bounce">⏳</div>
+                جاري الاتصال بسيرفر التراخيص وتحميل بيانات المشتركين...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Custom Renewal / Extension Modal                      -->
+    <!-- ============================================================ -->
+    <div id="renewModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🗓️</span>
+                    <div>
+                        <h3 class="text-base font-black text-white" id="rModalStoreTitle">تجديد اشتراك المتجر</h3>
+                        <p class="text-xs text-slate-400 font-mono" id="rModalMachineId">MP-XXXX</p>
+                    </div>
+                </div>
+                <button onclick="closeRenewModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80 text-xs space-y-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">تاريخ الانتهاء الحالي:</span>
+                    <span class="font-bold text-white font-mono" id="rCurrentExpText">--</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">الحالة الراهنة:</span>
+                    <span class="font-bold" id="rCurrentStatusText">سارٍ</span>
+                </div>
+                <p class="text-[11px] text-blue-400 pt-1 border-t border-slate-800 mt-1">
+                    💡 ملاحظة: عند إضافة أيام لاشتراك سارٍ، تُضاف تلقائياً فوق تاريخ الانتهاء الحالي. أما إذا كان منتهياً، فيبدأ الحساب من اليوم.
+                </p>
+            </div>
+
+            <!-- Manual Custom Days Input (Primary) -->
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-emerald-400 flex items-center justify-between">
+                    <span>⚡ أدخل عدد أيام التجديد يدوياً:</span>
+                    <span class="text-[11px] text-slate-400">اكتب أي رقم تريده</span>
+                </label>
+                <div class="relative">
+                    <input type="number" id="rCustomDaysInput" min="1" placeholder="مثال: 30 أو 45 أو 90 أو 365 يوم" oninput="onCustomDaysChange()" 
+                           class="w-full bg-slate-950 border-2 border-emerald-500/60 rounded-xl px-4 py-3 text-white font-black text-lg focus:outline-none focus:border-emerald-400 text-center font-mono placeholder:text-slate-600">
+                    <span class="absolute left-4 top-3.5 text-xs text-slate-400 font-bold">يوم</span>
+                </div>
+            </div>
+
+            <!-- Quick Preset Days Buttons -->
+            <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-300">أو اختر من الاختصارات السريعة:</label>
+                <div class="grid grid-cols-4 gap-2 text-xs">
+                    <button onclick="setRenewPresetDays(7)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold">+7 أيام</button>
+                    <button onclick="setRenewPresetDays(15)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold">+15 يوم</button>
+                    <button onclick="setRenewPresetDays(30)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold">+شهر (30)</button>
+                    <button onclick="setRenewPresetDays(60)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold">+شهرين (60)</button>
+                    <button onclick="setRenewPresetDays(90)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold">+3 أشهر (90)</button>
+                    <button onclick="setRenewPresetDays(180)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold">+6 أشهر</button>
+                    <button onclick="setRenewPresetDays(365)" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 py-2 px-2 rounded-xl border border-slate-700 transition text-center font-bold col-span-2 text-emerald-400 border-emerald-800/60">+سنة (365 يوم)</button>
+                </div>
+            </div>
+
+            <!-- Alternative Date Picker -->
+            <div class="text-xs">
+                <label class="block font-bold text-slate-400 mb-1">أو حدد تاريخ انتهاء دقيق من التقويم:</label>
+                <input type="date" id="rCustomDatePicker" oninput="onCustomDateChange()" 
+                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-blue-500">
+            </div>
+
+            <!-- Live Expiry Preview -->
+            <div class="bg-blue-950/40 border border-blue-800/60 p-3 rounded-2xl flex items-center justify-between text-xs">
+                <span class="text-blue-300 font-bold">تاريخ الانتهاء الجديد المتوقع:</span>
+                <span class="font-black text-emerald-400 font-mono text-base" id="rPreviewNewExp">--</span>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button onclick="closeRenewModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">إلغاء</button>
+                <button onclick="submitCustomRenew()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition flex items-center gap-1.5">
+                    <span>⚡ اعتماد وتجديد الترخيص الآن</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Edit Store Info Modal (Multi-Branch, PIN, Notes)      -->
+    <!-- ============================================================ -->
+    <div id="editModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-black text-white flex items-center gap-2">
+                    ✏️ تعديل بيانات المتجر والفروع
+                </h3>
+                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">معرّف الجهاز (ثابت)</label>
+                    <input type="text" id="editMachineId" readonly class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-400 font-mono text-xs">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">اسم المتجر أو العميل *</label>
+                        <input type="text" id="editStoreName" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">اسم الفرع (Multi-Branch)</label>
+                        <input type="text" id="editBranchName" placeholder="مثال: الفرع الرئيسي / فرع المنصور" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">المؤسسة / الشركة التابعة</label>
+                        <input type="text" id="editCompanyName" placeholder="مثال: مجموعة البركة" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">رمز دخول المالك (PIN للموبايل)</label>
+                        <input type="text" id="editOwnerPin" placeholder="1234" maxlength="8" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-center font-bold focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">رقم الهاتف (واتساب)</label>
+                    <input type="text" id="editPhone" placeholder="مثال: 07700000000" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">ملاحظات داخلية / تحصيل</label>
+                    <textarea id="editNotes" rows="2" placeholder="تفاصيل الدفع، طريقة التحويل، أو أي ملاحظة..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button onclick="closeEditModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">إلغاء</button>
+                <button onclick="submitEditDevice()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">حفظ التعديلات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Store Owner Mobile Portal Share Modal                 -->
+    <!-- ============================================================ -->
+    <div id="portalModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📱</span>
+                    <div>
+                        <h3 class="text-base font-black text-white">رابط بوابة المالك على الموبايل</h3>
+                        <p class="text-xs text-slate-400" id="portalStoreTitle">--</p>
+                    </div>
+                </div>
+                <button onclick="closePortalModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-xs space-y-2">
+                <p class="text-slate-300">
+                    يمكن لصاحب المحل فتح هذا الرابط من هاتفه ومتابعة مبيعات اليوم، صافي الأرباح، ونقدية الصندوق الحية:
+                </p>
+                <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                    <span class="font-mono text-[11px] text-blue-400 truncate" id="portalLinkText">--</span>
+                    <button onclick="copyPortalLink()" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 transition text-[11px]">نسخ</button>
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-slate-400">رمز الدخول السري (PIN):</span>
+                    <span class="font-mono font-black text-emerald-400 text-sm bg-slate-900 px-3 py-1 rounded-lg border border-slate-800" id="portalPinText">1234</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                <button onclick="openPortalInNewTab()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition">
+                    🌐 فتح البوابة للتجربة
+                </button>
+                <button onclick="sharePortalViaWhatsApp()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold hover:from-emerald-500 hover:to-green-500 transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/30">
+                    <span>📲 إرسال للعميل عبر واتساب</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Audit Trail / Activity Log Modal                      -->
+    <!-- ============================================================ -->
+    <div id="auditModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full p-6 space-y-4 shadow-2xl relative max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl text-purple-400">📋</span>
+                    <div>
+                        <h3 class="text-base font-black text-white">سجل العمليات والتدقيق (Audit Trail)</h3>
+                        <p class="text-xs text-slate-400">سجل موثق بجميع حركات التجديد، التسجيل، والإيقاف</p>
+                    </div>
+                </div>
+                <button onclick="closeAuditModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="text" id="auditSearchInput" oninput="filterAuditLogs()" placeholder="🔍 ابحث في السجل باسم المتجر أو نوع الحركة..." 
+                       autocomplete="off" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+                <button onclick="loadAuditLogs()" class="px-3 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700 transition">🔄 تحديث</button>
+            </div>
+
+            <!-- Audit Log Table Container -->
+            <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="auditLogsContainer">
+                <div class="text-center py-10 text-slate-500 text-xs">جاري تحميل السجل...</div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 flex justify-end">
+                <button onclick="closeAuditModal()" class="px-5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Telegram Bot Settings Modal                           -->
+    <!-- ============================================================ -->
+    <div id="tgModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl text-sky-400">🤖</span>
+                    <div>
+                        <h3 class="text-base font-black text-white">إعدادات بوت تيليغرام للإشعارات الفورية</h3>
+                        <p class="text-xs text-slate-400">تصلك تنبيهات المشتركين الجدد والانتهاء لهاتفك مباشرة</p>
+                    </div>
+                </div>
+                <button onclick="closeTelegramModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-[11px] text-slate-300 space-y-1">
+                <p class="font-bold text-sky-400">💡 خطوات تفعيل البوت خلال دقيقة واحدة مجاناً:</p>
+                <p>1. افتح تطبيق تيليغرام وابحث عن <strong>@BotFather</strong> وأرسل له أمر <code>/newbot</code> وانسخ رمز <strong>Bot Token</strong>.</p>
+                <p>2. ابحث في تيليغرام عن <strong>@userinfobot</strong> واضغط Start ليعطيك معرف حسابك <strong>Chat ID</strong>.</p>
+                <p>3. ألصق البيانات هنا واضغط زر <strong>فحص وإرسال رسالة تجريبية</strong>.</p>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">رمز توكن البوت (Bot Token) *</label>
+                    <input type="text" id="tgBotToken" placeholder="مثال: 123456789:ABCdefGhIjkLmNoPqRsTuvWxYz" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">معرّف المحادثة الخاص بك (Chat ID) *</label>
+                    <input type="text" id="tgChatId" placeholder="مثال: 1234567890" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-sky-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+                <button onclick="testTelegramConnection()" class="px-4 py-2 rounded-xl bg-slate-800 text-sky-300 text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5">
+                    <span>🧪</span>
+                    <span>فحص اتصال تجريبي</span>
+                </button>
+                <button onclick="saveTelegramSettings()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-bold shadow-lg shadow-sky-600/30 hover:from-sky-500 hover:to-blue-500 transition">
+                    حفظ الإعدادات
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Smart WhatsApp & License Code Share Modal             -->
+    <!-- ============================================================ -->
+    <div id="waModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl text-emerald-400">💬</span>
+                    <div>
+                        <h3 class="text-base font-black text-white">إرسال كود الترخيص ورسائل الواتساب</h3>
+                        <p class="text-xs text-slate-400" id="waStoreName">--</p>
+                    </div>
+                </div>
+                <button onclick="closeWaModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <!-- Single Dedicated Pure Code Box -->
+            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-300 font-bold">🔑 كود الترخيص الصافي (بدون أي نصوص):</span>
+                    <button onclick="copyOnlyLicenseKey()" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-emerald-600/30 transition">
+                        <span>📋</span>
+                        <span>نسخ الكود فقط</span>
+                    </button>
+                </div>
+                <div class="bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 truncate select-all" id="waPureKeyDisplay">
+                    MPLIC-...
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 text-xs bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                <button onclick="selectWaTemplate('activation')" id="btnTplAct" class="flex-1 py-1.5 rounded-xl font-bold bg-emerald-600 text-white transition text-center">🔑 رسالة التفعيل</button>
+                <button onclick="selectWaTemplate('reminder')" id="btnTplRem" class="flex-1 py-1.5 rounded-xl font-bold bg-slate-900 text-slate-400 hover:text-white transition text-center">🔔 تذكير بالتجديد</button>
+                <button onclick="selectWaTemplate('receipt')" id="btnTplRec" class="flex-1 py-1.5 rounded-xl font-bold bg-slate-900 text-slate-400 hover:text-white transition text-center">🧾 إشعار التجديد</button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">نص الرسالة الكامل للواتساب:</label>
+                <textarea id="waMsgContent" rows="6" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-200 font-sans leading-relaxed focus:outline-none focus:border-emerald-500"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                <button onclick="copyWaText()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5">
+                    <span>📋</span>
+                    <span>نسخ الرسالة كاملة</span>
+                </button>
+                <button onclick="openWhatsAppDirect()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition flex items-center gap-1.5">
+                    <span>📲</span>
+                    <span>إرسال واتساب</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Add New Store Modal                                   -->
+    <!-- ============================================================ -->
+    <div id="newModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-black text-white flex items-center gap-2">
+                    ➕ تسجيل وتفعيل متجر جديد
+                </h3>
+                <button onclick="closeNewModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">اسم المتجر أو العميل *</label>
+                        <input type="text" id="mStoreName" placeholder="مثال: سوبرماركت البركة" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">اسم الفرع (Multi-Branch)</label>
+                        <input type="text" id="mBranchName" placeholder="مثال: الفرع الرئيسي" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">معرّف الجهاز (Machine ID) *</label>
+                        <input type="text" id="mMachineId" placeholder="مثال: MP-10D8-B943-8F76-F72B" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">المؤسسة / الشركة التابعة</label>
+                        <input type="text" id="mCompanyName" placeholder="مثال: مجموعة البركة" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">رقم الهاتف (واتساب)</label>
+                        <input type="text" id="mPhone" placeholder="مثال: 07700000000" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">نوع الترخيص الممنوح</label>
+                        <select id="mPlanType" onchange="toggleCustomNewDays()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:outline-none focus:border-blue-500">
+                            <option value="trial">🟣 فترة تجريبية مجانية (14 يوماً)</option>
+                            <option value="12" selected>🟢 اشتراك سنوي (12 شهر) - Pro</option>
+                            <option value="1">اشتراك شهري (30 يوم)</option>
+                            <option value="3">اشتراك 3 أشهر</option>
+                            <option value="6">اشتراك نصف سنوي (6 أشهر)</option>
+                            <option value="24">اشتراك سنتان (24 شهراً)</option>
+                            <option value="custom">⚙️ تحديد أيام يدوي / تاريخ محدد</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="newCustomDaysSection" class="hidden bg-slate-950 p-3 rounded-2xl border border-slate-800 text-xs grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">عدد الأيام:</label>
+                        <input type="number" id="mCustomDays" min="1" placeholder="مثال: 45" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">أو تاريخ محدد:</label>
+                        <input type="date" id="mExactExpiry" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">ملاحظات التحصيل والدفع</label>
+                    <input type="text" id="mNotes" placeholder="مثال: تم التحويل عبر زين كاش / كاش يد بيد" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button onclick="closeNewModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">إلغاء</button>
+                <button onclick="submitNewDevice()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">حفظ وإصدار الترخيص</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Change Password Modal                                 -->
+    <!-- ============================================================ -->
+    <div id="passwordModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+        <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-slate-700/80 shadow-2xl space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🔑</span>
+                    <h3 class="text-base font-black text-white">تغيير رمز لوحة التحكم</h3>
+                </div>
+                <button onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">كلمة المرور الحالية</label>
+                    <input type="password" id="pwdCurrent" placeholder="أدخل كلمة المرور الحالية" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">كلمة المرور الجديدة</label>
+                    <input type="password" id="pwdNew" placeholder="أدخل كلمة المرور الجديدة (4 خانات فأكثر)" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">تأكيد كلمة المرور الجديدة</label>
+                    <input type="password" id="pwdConfirm" placeholder="أعد إدخال كلمة المرور الجديدة" class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div id="pwdError" class="text-rose-400 text-[11px] hidden font-bold"></div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button onclick="closeChangePasswordModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">إلغاء</button>
+                <button onclick="submitChangePassword()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30 transition">حفظ الرمز الجديد</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: Login Modal (Properly Form-Wrapped for Browser Safety) -->
+    <!-- ============================================================ -->
+    <div id="loginModal" class="fixed inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 hidden z-50">
+        <div class="glass-card max-w-sm w-full rounded-3xl p-7 border border-slate-700/80 shadow-2xl space-y-5">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-2xl shadow-xl shadow-blue-600/30">
+                    🔐
+                </div>
+                <h3 class="text-lg font-black text-white">تسجيل الدخول للوحة التراخيص</h3>
+                <p class="text-xs text-slate-400">أدخل بيانات الإدارة للوصول للمتاجر والتراخيص</p>
+            </div>
+            
+            <form id="adminLoginForm" autocomplete="on" onsubmit="event.preventDefault(); submitLogin();" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">اسم المستخدم</label>
+                    <input type="text" id="loginUser" placeholder="اسم المستخدم" autocomplete="username" 
+                           class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 text-center font-bold">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">كلمة المرور</label>
+                    <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" 
+                           class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 text-center font-bold">
+                </div>
+                <div id="loginError" class="text-rose-400 text-[11px] text-center hidden font-bold"></div>
+
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">
+                    تسجيل الدخول ↵
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/50 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 hidden z-50 text-sm backdrop-blur-xl">
+        <span id="toastIcon" class="text-xl">✅</span>
+        <span id="toastMsg" class="font-bold">تمت العملية بنجاح!</span>
+    </div>
+
+    <script>
+        let allDevices = [];
+        let allAuditLogs = [];
+        let currentFilter = 'all';
+
+        let currentActiveDevice = null;
+        let currentWaDevice = null;
+        let currentPortalDevice = null;
+
+        function getAuthHeaders(extra = {}) {
+            const pass = sessionStorage.getItem('admin_pass') || 'maxpro@2026';
+            const headers = { ...extra };
+            if (pass) {
+                headers['X-Admin-Password'] = pass;
+                const user = sessionStorage.getItem('admin_user') || 'admin';
+                try {
+                    headers['Authorization'] = 'Basic ' + btoa(unescape(encodeURIComponent(user + ':' + pass)));
+                } catch(e) {}
+            }
+            return headers;
+        }
+
+        function formatCurrency(num) {
+            return Number(num || 0).toLocaleString('en-US');
+        }
+
+        // ── Auth Handling ──────────────────────────────────────────
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('loginPass').focus(), 100);
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        async function submitLogin() {
+            const user = (document.getElementById('loginUser').value || '').trim() || 'admin';
+            const pass = (document.getElementById('loginPass').value || '').trim();
+            const errDiv = document.getElementById('loginError');
+            errDiv.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/v1/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'بيانات الدخول غير صحيحة');
+
+                sessionStorage.setItem('admin_user', user);
+                sessionStorage.setItem('admin_pass', pass);
+                closeLoginModal();
+                showToast('🎉 تم تسجيل الدخول بنجاح!');
+                loadDevices();
+            } catch (err) {
+                errDiv.innerText = err.message;
+                errDiv.classList.remove('hidden');
+            }
+        }
+
+        // ── Password Management ────────────────────────────────────
+        function openChangePasswordModal() {
+            document.getElementById('pwdCurrent').value = sessionStorage.getItem('admin_pass') || '';
+            document.getElementById('pwdNew').value = '';
+            document.getElementById('pwdConfirm').value = '';
+            document.getElementById('pwdError').classList.add('hidden');
+            document.getElementById('passwordModal').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('passwordModal').classList.add('hidden');
+        }
+
+        async function submitChangePassword() {
+            const curP = document.getElementById('pwdCurrent').value.trim();
+            const newP = document.getElementById('pwdNew').value.trim();
+            const cnfP = document.getElementById('pwdConfirm').value.trim();
+            const errDiv = document.getElementById('pwdError');
+            errDiv.classList.add('hidden');
+
+            if (!curP || !newP) {
+                errDiv.innerText = 'يرجى إدخال كلمة المرور الحالية والجديدة.';
+                errDiv.classList.remove('hidden');
+                return;
+            }
+            if (newP !== cnfP) {
+                errDiv.innerText = 'كلمتا المرور الجديدتان غير متطابقتين.';
+                errDiv.classList.remove('hidden');
+                return;
+            }
+            if (newP.length < 4) {
+                errDiv.innerText = 'كلمة المرور يجب ألا تقل عن 4 خانات.';
+                errDiv.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/admin/change_password', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ current_password: curP, new_password: newP })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر تغيير كلمة المرور');
+
+                sessionStorage.setItem('admin_pass', newP);
+                closeChangePasswordModal();
+                showToast('🔑 تم حفظ كلمة المرور الجديدة بنجاح!');
+            } catch (err) {
+                errDiv.innerText = err.message;
+                errDiv.classList.remove('hidden');
+            }
+        }
+
+        // ── Data Loading & Stats ──────────────────────────────────
+        async function loadDevices() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+            try {
+                const res = await fetch('/api/v1/admin/devices', {
+                    headers: getAuthHeaders()
+                });
+                if (res.status === 401) {
+                    openLoginModal();
+                    return;
+                }
+                if (!res.ok) throw new Error('فشل استدعاء البيانات من السيرفر');
+                allDevices = await res.json();
+                updateStats(allDevices);
+                applyFilters();
+            } catch (err) {
+                document.getElementById('devicesContainer').innerHTML = `
+                    <div class="glass-card text-center py-16 rounded-2xl border border-rose-900/50 text-rose-400 text-sm">
+                        ⚠️ تعذر تحميل البيانات من السيرفر: ${err.message}
+                    </div>
+                `;
+            } finally {
+                if (refreshIcon) setTimeout(() => refreshIcon.classList.remove('animate-spin'), 600);
+            }
+        }
+
+        function updateStats(devices) {
+            const total = devices.length;
+            const trial = devices.filter(d => d.is_trial && !d.is_expired && d.status !== 'SUSPENDED').length;
+            const active = devices.filter(d => !d.is_trial && d.status === 'ACTIVE' && !d.is_expired).length;
+            const soon = devices.filter(d => !d.is_expired && d.days_remaining <= 14 && d.status !== 'SUSPENDED').length;
+            const expired = devices.filter(d => d.status === 'SUSPENDED' || d.is_expired).length;
+            const suspended = devices.filter(d => d.status === 'SUSPENDED').length;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statTrial').innerText = trial;
+            document.getElementById('statActive').innerText = active;
+            document.getElementById('statSoon').innerText = soon;
+            document.getElementById('statExpired').innerText = expired;
+
+            document.getElementById('count-all').innerText = total;
+            document.getElementById('count-trial').innerText = trial;
+            document.getElementById('count-active').innerText = active;
+            document.getElementById('count-soon').innerText = soon;
+            document.getElementById('count-expired').innerText = expired;
+            document.getElementById('count-suspended').innerText = suspended;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                btn.className = 'filter-tab px-3 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            });
+            const activeTab = document.getElementById(`tab-${filter}`);
+            if (activeTab) {
+                activeTab.className = 'filter-tab px-3 py-1.5 rounded-xl font-bold bg-blue-600 text-white transition';
+            }
+            applyFilters();
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            if (input) input.value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            applyFilters();
+        }
+
+        // Clean Search Query Extractor (Eliminates browser credential autofill)
+        function getCleanSearchQuery() {
+            const input = document.getElementById('searchInput');
+            if (!input) return '';
+            let val = (input.value || '').trim();
+            // If browser autofill forced 'admin' without user focusing the search box, ignore it
+            if (val.toLowerCase() === 'admin' && document.activeElement !== input) {
+                input.value = '';
+                return '';
+            }
+            return val.toLowerCase();
+        }
+
+        function applyFilters() {
+            const query = getCleanSearchQuery();
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (clearBtn) {
+                if (query) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            }
+
+            let filtered = allDevices.filter(d => {
+                const matchQuery = !query || 
+                    d.store_name.toLowerCase().includes(query) || 
+                    (d.branch_name && d.branch_name.toLowerCase().includes(query)) ||
+                    (d.company_name && d.company_name.toLowerCase().includes(query)) ||
+                    d.machine_id.toLowerCase().includes(query) || 
+                    (d.phone && d.phone.includes(query)) ||
+                    (d.notes && d.notes.toLowerCase().includes(query));
+
+                let matchStatus = true;
+                if (currentFilter === 'trial') matchStatus = d.is_trial && !d.is_expired && d.status !== 'SUSPENDED';
+                else if (currentFilter === 'active') matchStatus = !d.is_trial && d.status === 'ACTIVE' && !d.is_expired;
+                else if (currentFilter === 'soon') matchStatus = !d.is_expired && d.days_remaining <= 14 && d.status !== 'SUSPENDED';
+                else if (currentFilter === 'expired') matchStatus = (d.is_expired && d.status !== 'SUSPENDED');
+                else if (currentFilter === 'suspended') matchStatus = (d.status === 'SUSPENDED');
+
+                return matchQuery && matchStatus;
+            });
+
+            // Sort
+            const sortBy = document.getElementById('sortBy').value;
+            if (sortBy === 'sort_sync') {
+                filtered.sort((a, b) => (b.last_sync_at || '').localeCompare(a.last_sync_at || ''));
+            } else if (sortBy === 'sort_exp_asc') {
+                filtered.sort((a, b) => (a.expires_at || '').localeCompare(b.expires_at || ''));
+            } else if (sortBy === 'sort_days_desc') {
+                filtered.sort((a, b) => (b.days_remaining || 0) - (a.days_remaining || 0));
+            } else if (sortBy === 'sort_name') {
+                filtered.sort((a, b) => a.store_name.localeCompare(b.store_name, 'ar'));
+            }
+
+            renderDevices(filtered);
+        }
+
+        // ── Device Rendering ─────────────────────────────────────────
+        function renderDevices(devices) {
+            const container = document.getElementById('devicesContainer');
+            if (!devices.length) {
+                container.innerHTML = `
+                    <div class="glass-card text-center py-16 rounded-3xl border border-slate-800 text-slate-400 text-sm">
+                        <div class="text-3xl mb-2">🔍</div>
+                        لا توجد متاجر مطابقة لمعايير البحث أو التبويب المختار.
+                    </div>
+                `;
+                return;
+            }
+
+            const nowMs = Date.now();
+
+            container.innerHTML = devices.map(d => {
+                const isSuspended = (d.status === 'SUSPENDED');
+                const isTrial = Boolean(d.is_trial);
+                const isExp = Boolean(d.is_expired);
+                
+                let statusBadge = '';
+                let cardBorderClass = 'hover:border-slate-700';
+                let progressColor = 'bg-blue-500';
+
+                if (isSuspended) {
+                    statusBadge = '<span class="bg-rose-950/90 text-rose-300 border border-rose-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> موقوف إدارياً</span>';
+                    progressColor = 'bg-rose-600';
+                } else if (isTrial) {
+                    if (isExp) {
+                        statusBadge = '<span class="bg-rose-950/90 text-rose-300 border border-rose-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> انتهت التجربة</span>';
+                        progressColor = 'bg-rose-600';
+                    } else {
+                        statusBadge = `<span class="bg-purple-950/90 text-purple-300 border border-purple-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 glow-purple"><span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> 🟣 تجريبي (${d.days_remaining} يوم)</span>`;
+                        cardBorderClass = 'border-purple-900/50 hover:border-purple-700/80';
+                        progressColor = 'bg-purple-500';
+                    }
+                } else if (isExp) {
+                    statusBadge = '<span class="bg-rose-950/90 text-rose-300 border border-rose-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 🔴 انتهى الاشتراك</span>';
+                    progressColor = 'bg-rose-600';
+                } else if (d.days_remaining <= 14) {
+                    statusBadge = `<span class="bg-amber-950/90 text-amber-300 border border-amber-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> 🟡 ينتهي قريباً (${d.days_remaining} يوم)</span>`;
+                    progressColor = 'bg-amber-500';
+                } else {
+                    statusBadge = `<span class="bg-emerald-950/90 text-emerald-300 border border-emerald-800/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> 🟢 سارٍ (${d.days_remaining} يوم)</span>`;
+                    progressColor = 'bg-emerald-500';
+                }
+
+                // Online indicator
+                let onlinePill = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-800/90 text-slate-400 border border-slate-700/50"><span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> غير متصل</span>';
+                if (d.last_sync_at) {
+                    try {
+                        const syncMs = new Date(d.last_sync_at).getTime();
+                        const diffMin = (nowMs - syncMs) / (1000 * 60);
+                        if (diffMin <= 15) {
+                            onlinePill = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/80"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> متصل الآن</span>';
+                        } else if (diffMin <= 1440) {
+                            onlinePill = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-950/80 text-blue-300 border border-blue-800/80"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> نشط اليوم</span>';
+                        }
+                    } catch(e) {}
+                }
+
+                const cleanPhone = (d.phone || '').replace(/[^0-9]/g, '');
+                const expDate = (d.expires_at || '').substring(0, 10);
+                const lastSync = d.last_sync_at ? d.last_sync_at.replace('T', ' ').substring(0, 16) : 'لم يتصل بعد';
+                const percent = d.percent_remaining || 0;
+
+                // Branch & Company Badges
+                let branchBadge = d.branch_name ? `<span class="text-xs bg-indigo-950/80 text-indigo-300 px-2 py-0.5 rounded-lg border border-indigo-800/80 font-bold">🏢 ${d.branch_name}</span>` : '';
+                let compBadge = d.company_name ? `<span class="text-xs bg-slate-800/80 text-slate-400 px-2 py-0.5 rounded-lg border border-slate-700 font-semibold">🏛️ ${d.company_name}</span>` : '';
+
+                // Live Sales Metrics Pill if reported
+                let salesMetricsPill = '';
+                if (d.today_sales > 0 || d.today_invoices > 0) {
+                    salesMetricsPill = `
+                        <div class="flex items-center gap-3 text-xs bg-emerald-950/30 border border-emerald-800/40 px-3 py-1.5 rounded-xl text-emerald-300 font-mono">
+                            <span>💰 مبيعات اليوم: <strong class="text-white">${formatCurrency(d.today_sales)} د.ع</strong></span>
+                            <span>🧾 فواتير: <strong class="text-white">${d.today_invoices}</strong></span>
+                            <span>💵 كاش: <strong class="text-emerald-400">${formatCurrency(d.cash_in_drawer)}</strong></span>
+                        </div>
+                    `;
+                }
+
+                // Shortened token preview
+                const tokenStr = (d.current_token || '').trim();
+                const shortToken = tokenStr.length > 20 ? (tokenStr.substring(0, 12) + '...' + tokenStr.substring(tokenStr.length - 8)) : tokenStr;
+
+                return `
+                    <div class="glass-card p-4 lg:p-5 rounded-3xl transition ${cardBorderClass} flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        
+                        <div class="space-y-2.5 flex-1">
+                            <div class="flex items-center gap-2.5 flex-wrap">
+                                <h3 class="text-base lg:text-lg font-black text-white flex items-center gap-2">
+                                    <span>🏪</span>
+                                    <span>${d.store_name}</span>
+                                    <button onclick="openEditModal('${d.machine_id}')" class="text-slate-400 hover:text-blue-400 text-xs ml-1 transition" title="تعديل بيانات المتجر">✏️</button>
+                                </h3>
+                                ${branchBadge}
+                                ${compBadge}
+                                ${statusBadge}
+                                ${onlinePill}
+                                <span class="text-xs bg-slate-800/90 text-slate-300 px-2.5 py-0.5 rounded-lg border border-slate-700/80 font-semibold">${d.plan_name_ar}</span>
+                            </div>
+
+                            ${salesMetricsPill}
+
+                            <div class="w-full max-w-md bg-slate-800/60 h-1.5 rounded-full overflow-hidden">
+                                <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${percent}%;"></div>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                                <!-- Machine ID with copy -->
+                                <span class="flex items-center gap-1.5 font-mono text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800">
+                                    💻 ${d.machine_id}
+                                    <button onclick="copyOnlyMachineId('${d.machine_id}')" class="text-blue-400 hover:text-blue-300 ml-1 font-sans" title="نسخ المعرّف">📋</button>
+                                </span>
+
+                                <!-- Direct Pure Token Copy Badge on Card -->
+                                ${tokenStr ? `
+                                    <span class="flex items-center gap-1.5 font-mono text-emerald-300 bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-800/50">
+                                        🔑 كود الترخيص: <span class="text-white">${shortToken}</span>
+                                        <button onclick="copyOnlyPureToken('${tokenStr}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded text-[11px] font-bold transition ml-1" title="نسخ كود الترخيص الصافي فقط">
+                                            نسخ الكود 📋
+                                        </button>
+                                    </span>
+                                ` : ''}
+
+                                ${cleanPhone ? `
+                                    <button onclick="openWaModal('${d.machine_id}')" class="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-semibold bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-1 rounded-lg transition">
+                                        📱 ${d.phone} (واتساب)
+                                    </button>
+                                ` : ''}
+
+                                <span>📅 الانتهاء: <strong class="text-slate-200 font-mono">${expDate}</strong></span>
+                                <span>☁️ آخر مزامنة: <strong class="text-slate-300 font-mono">${lastSync}</strong></span>
+                            </div>
+
+                            ${d.notes ? `<div class="text-[11px] text-slate-400 flex items-center gap-1.5"><span>📝</span> <span>ملاحظة: ${d.notes}</span></div>` : ''}
+                        </div>
+
+                        <!-- Action Buttons Bar -->
+                        <div class="flex items-center gap-2 flex-wrap lg:justify-end">
+                            
+                            <!-- Manual Days Renewal Button (Primary) -->
+                            <button onclick="openRenewModal('${d.machine_id}')" 
+                                    class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl active:scale-95 transition shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 border border-white/10" 
+                                    title="تجديد وتحديد عدد الأيام يدوي">
+                                <span>🗓️ تجديد بالأيام (يدوي)</span>
+                            </button>
+
+                            <!-- Direct Clean Token Copy Button -->
+                            ${tokenStr ? `
+                                <button onclick="copyOnlyPureToken('${tokenStr}')" 
+                                        class="bg-slate-800 hover:bg-emerald-900/60 text-emerald-300 font-bold text-xs px-3 py-2.5 rounded-xl border border-emerald-700/60 active:scale-95 transition flex items-center gap-1" 
+                                        title="نسخ كود الترخيص الصافي فقط بدون نصوص إضافية">
+                                    <span>🔑 نسخ الكود</span>
+                                </button>
+                            ` : ''}
+
+                            <button onclick="openPortalModal('${d.machine_id}')" 
+                                    class="bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold text-xs px-3 py-2.5 rounded-xl border border-sky-800/50 active:scale-95 transition flex items-center gap-1" title="مشاركة رابط المتابعة الحية لصاحب المحل على الموبايل">
+                                <span>📱</span>
+                                <span>بوابة المالك</span>
+                            </button>
+
+                            <button onclick="openWaModal('${d.machine_id}')" 
+                                    class="bg-slate-800 hover:bg-emerald-950/80 text-emerald-400 text-xs px-2.5 py-2.5 rounded-xl border border-emerald-800/50 active:scale-95 transition" title="رسائل واتساب وكود التفعيل">
+                                💬
+                            </button>
+
+                            <button onclick="toggleSuspend('${d.machine_id}')" 
+                                    class="bg-slate-800 hover:bg-rose-950 text-rose-300 text-xs px-2.5 py-2.5 rounded-xl border border-slate-700 active:scale-95 transition" title="${isSuspended ? 'إعادة تنشيط المتجر' : 'إيقاف المتجر مؤقتاً'}">
+                                ${isSuspended ? '🟢 تنشيط' : '⛔ إيقاف'}
+                            </button>
+
+                            <button onclick="deleteDeviceConfirm('${d.machine_id}')" 
+                                    class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 text-xs flex items-center justify-center transition border border-slate-700/60" title="حذف الجهاز نهائياً">
+                                🗑️
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Custom Days Renewal Logic ───────────────────────────────
+        function openRenewModal(machineId) {
+            const device = allDevices.find(d => d.machine_id === machineId);
+            if (!device) return;
+            currentActiveDevice = device;
+
+            document.getElementById('rModalStoreTitle').innerText = `تجديد اشتراك: ${device.store_name}`;
+            document.getElementById('rModalMachineId').innerText = device.machine_id;
+            const expDateStr = (device.expires_at || '').substring(0, 10);
+            document.getElementById('rCurrentExpText').innerText = expDateStr || 'غير محدد';
+            document.getElementById('rCurrentStatusText').innerText = device.is_expired ? '🔴 منتهي الصلاحية' : `🟢 سارٍ (${device.days_remaining} يوم)`;
+
+            // Set default 30 days and calculate preview
+            document.getElementById('rCustomDaysInput').value = '30';
+            document.getElementById('rCustomDatePicker').value = '';
+            updateRenewPreviewFromDays(30);
+
+            document.getElementById('renewModal').classList.remove('hidden');
+            setTimeout(() => {
+                const inp = document.getElementById('rCustomDaysInput');
+                if (inp) { inp.focus(); inp.select(); }
+            }, 100);
+        }
+
+        function closeRenewModal() {
+            document.getElementById('renewModal').classList.add('hidden');
+            currentActiveDevice = null;
+        }
+
+        function calculateBaseDate(device) {
+            if (!device) return new Date();
+            if (device.is_expired || device.is_trial) return new Date();
+            if (device.expires_at) {
+                const exp = new Date(device.expires_at);
+                if (exp > new Date()) return exp;
+            }
+            return new Date();
+        }
+
+        function setRenewPresetDays(days) {
+            document.getElementById('rCustomDaysInput').value = days;
+            document.getElementById('rCustomDatePicker').value = '';
+            updateRenewPreviewFromDays(days);
+        }
+
+        function onCustomDaysChange() {
+            const val = parseInt(document.getElementById('rCustomDaysInput').value);
+            if (val > 0) {
+                document.getElementById('rCustomDatePicker').value = '';
+                updateRenewPreviewFromDays(val);
+            } else {
+                document.getElementById('rPreviewNewExp').innerText = '--';
+            }
+        }
+
+        function updateRenewPreviewFromDays(days) {
+            if (!currentActiveDevice) return;
+            const base = calculateBaseDate(currentActiveDevice);
+            const target = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+            document.getElementById('rPreviewNewExp').innerText = target.toISOString().substring(0, 10);
+        }
+
+        function onCustomDateChange() {
+            const val = document.getElementById('rCustomDatePicker').value;
+            if (val) {
+                document.getElementById('rCustomDaysInput').value = '';
+                document.getElementById('rPreviewNewExp').innerText = val;
+            } else {
+                document.getElementById('rPreviewNewExp').innerText = '--';
+            }
+        }
+
+        async function submitCustomRenew() {
+            if (!currentActiveDevice) return;
+            const daysVal = parseInt(document.getElementById('rCustomDaysInput').value);
+            const dateVal = document.getElementById('rCustomDatePicker').value;
+
+            if (!daysVal && !dateVal) {
+                alert('يرجى كتابة عدد الأيام المراد التجديد بها، أو اختيار تاريخ محدد.');
+                return;
+            }
+
+            const payload = { machine_id: currentActiveDevice.machine_id };
+            if (dateVal) {
+                payload.exact_expiry = dateVal;
+            } else {
+                payload.days = daysVal;
+            }
+
+            try {
+                const res = await fetch('/api/v1/admin/renew', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر التجديد');
+
+                closeRenewModal();
+                showToast(`🎉 تم تجديد الترخيص بنجاح حتى تاريخ (${data.expires_at.substring(0, 10)})!`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        // ── Clean Copy Helpers (Requirement 4) ──────────────────────
+        function copyOnlyPureToken(token) {
+            const cleanKey = String(token || '').trim();
+            if (!cleanKey) {
+                showToast('⚠️ لا يوجد كود ترخيص لهذا الجهاز بعد', '⚠️');
+                return;
+            }
+            navigator.clipboard.writeText(cleanKey);
+            showToast('🔑 تم نسخ كود الترخيص فقط بنجاح! جاهز للإرسال.');
+        }
+
+        function copyOnlyMachineId(mid) {
+            navigator.clipboard.writeText(String(mid || '').trim());
+            showToast('💻 تم نسخ معرّف الجهاز (Machine ID)');
+        }
+
+        function copyOnlyLicenseKey() {
+            if (!currentWaDevice) return;
+            copyOnlyPureToken(currentWaDevice.current_token);
+        }
+
+        // ── Edit Store Modal ────────────────────────────────────────
+        function openEditModal(machineId) {
+            const device = allDevices.find(d => d.machine_id === machineId);
+            if (!device) return;
+
+            document.getElementById('editMachineId').value = device.machine_id;
+            document.getElementById('editStoreName').value = device.store_name || '';
+            document.getElementById('editBranchName').value = device.branch_name || '';
+            document.getElementById('editCompanyName').value = device.company_name || '';
+            document.getElementById('editOwnerPin').value = device.owner_pin || '1234';
+            document.getElementById('editPhone').value = device.phone || '';
+            document.getElementById('editNotes').value = device.notes || '';
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        async function submitEditDevice() {
+            const mid = document.getElementById('editMachineId').value;
+            const name = document.getElementById('editStoreName').value.trim();
+            const branch = document.getElementById('editBranchName').value.trim();
+            const company = document.getElementById('editCompanyName').value.trim();
+            const pin = document.getElementById('editOwnerPin').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const notes = document.getElementById('editNotes').value.trim();
+
+            if (!name) {
+                alert('اسم المتجر مطلوب.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/admin/devices/update', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({
+                        machine_id: mid,
+                        store_name: name,
+                        branch_name: branch,
+                        company_name: company,
+                        owner_pin: pin,
+                        phone: phone,
+                        notes: notes
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر تعديل البيانات');
+
+                closeEditModal();
+                showToast('✅ تم تعديل بيانات المتجر والفروع بنجاح!');
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        // ── Store Owner Mobile Portal Modal ─────────────────────────
+        function openPortalModal(machineId) {
+            const device = allDevices.find(d => d.machine_id === machineId);
+            if (!device) return;
+            currentPortalDevice = device;
+
+            const domain = window.location.origin;
+            const link = `${domain}/portal?mid=${device.machine_id}`;
+            document.getElementById('portalStoreTitle').innerText = `${device.store_name} (${device.branch_name || 'الفرع الرئيسي'})`;
+            document.getElementById('portalLinkText').innerText = link;
+            document.getElementById('portalPinText').innerText = device.owner_pin || '1234';
+
+            document.getElementById('portalModal').classList.remove('hidden');
+        }
+
+        function closePortalModal() {
+            document.getElementById('portalModal').classList.add('hidden');
+            currentPortalDevice = null;
+        }
+
+        function copyPortalLink() {
+            if (!currentPortalDevice) return;
+            const link = `${window.location.origin}/portal?mid=${currentPortalDevice.machine_id}`;
+            copyText(link, '📋 تم نسخ رابط بوابة المالك بنجاح!');
+        }
+
+        function openPortalInNewTab() {
+            if (!currentPortalDevice) return;
+            const link = `${window.location.origin}/portal?mid=${currentPortalDevice.machine_id}`;
+            window.open(link, '_blank');
+        }
+
+        function sharePortalViaWhatsApp() {
+            if (!currentPortalDevice) return;
+            const d = currentPortalDevice;
+            const link = `${window.location.origin}/portal?mid=${d.machine_id}`;
+            const pin = d.owner_pin || '1234';
+            const cleanPhone = (d.phone || '').replace(/[^0-9]/g, '');
+
+            const msg = `مرحباً ${d.store_name} 👋
+تم تجهيز رابط بوابتك الحية لمتابعة مبيعات وأرباح محلك من هاتفك مباشرة في أي وقت ومن أي مكان:
+
+🔗 رابط البوابة:
+${link}
+
+🔑 رمز الدخول السري (PIN):
+${pin}
+
+نسعد دائماً بخدمتكم وتيسير أعمالكم! ✨`;
+
+            const encoded = encodeURIComponent(msg);
+            if (cleanPhone) {
+                window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
+            } else {
+                window.open(`https://wa.me/?text=${encoded}`, '_blank');
+            }
+        }
+
+        // ── Audit Trail Modal ───────────────────────────────────────
+        function openAuditModal() {
+            document.getElementById('auditModal').classList.remove('hidden');
+            loadAuditLogs();
+        }
+
+        function closeAuditModal() {
+            document.getElementById('auditModal').classList.add('hidden');
+        }
+
+        async function loadAuditLogs() {
+            const container = document.getElementById('auditLogsContainer');
+            container.innerHTML = '<div class="text-center py-10 text-slate-500 text-xs">جاري جلب السجل...</div>';
+            try {
+                const res = await fetch('/api/v1/admin/audit_logs', { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('فشل تحميل السجل');
+                allAuditLogs = await res.json();
+                renderAuditLogs(allAuditLogs);
+            } catch(e) {
+                container.innerHTML = `<div class="text-center py-10 text-rose-400 text-xs">⚠️ ${e.message}</div>`;
+            }
+        }
+
+        function filterAuditLogs() {
+            const q = (document.getElementById('auditSearchInput').value || '').trim().toLowerCase();
+            if (!q) {
+                renderAuditLogs(allAuditLogs);
+                return;
+            }
+            const filtered = allAuditLogs.filter(l => 
+                (l.store_name && l.store_name.toLowerCase().includes(q)) ||
+                (l.action && l.action.toLowerCase().includes(q)) ||
+                (l.details && l.details.toLowerCase().includes(q)) ||
+                (l.machine_id && l.machine_id.toLowerCase().includes(q))
+            );
+            renderAuditLogs(filtered);
+        }
+
+        function renderAuditLogs(logs) {
+            const container = document.getElementById('auditLogsContainer');
+            if (!logs.length) {
+                container.innerHTML = '<div class="text-center py-10 text-slate-500 text-xs">لا توجد حركات مسجلة.</div>';
+                return;
+            }
+            container.innerHTML = logs.map(l => {
+                const time = (l.timestamp || '').replace('T', ' ').substring(0, 19);
+                let badgeClass = 'bg-blue-950 text-blue-300 border-blue-800';
+                if (l.action.includes('RENEW') || l.action.includes('REGIST')) badgeClass = 'bg-emerald-950 text-emerald-300 border-emerald-800';
+                if (l.action.includes('SUSPEND') || l.action.includes('DELETE')) badgeClass = 'bg-rose-950 text-rose-300 border-rose-800';
+                
+                return `
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 text-xs flex items-center justify-between gap-3">
+                        <div class="space-y-1 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-white">${l.store_name || 'النظام'}</span>
+                                <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${badgeClass}">${l.action}</span>
+                                <span class="text-[11px] font-mono text-slate-500">${l.machine_id}</span>
+                            </div>
+                            <div class="text-slate-400 text-[11px]">${l.details}</div>
+                        </div>
+                        <div class="text-right text-[11px] font-mono text-slate-500 whitespace-nowrap">
+                            ${time}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Telegram Settings Modal ─────────────────────────────────
+        function openTelegramModal() {
+            document.getElementById('tgModal').classList.remove('hidden');
+            loadTelegramSettings();
+        }
+
+        function closeTelegramModal() {
+            document.getElementById('tgModal').classList.add('hidden');
+        }
+
+        async function loadTelegramSettings() {
+            try {
+                const res = await fetch('/api/v1/admin/telegram/settings', { headers: getAuthHeaders() });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.configured) {
+                    document.getElementById('tgBotToken').placeholder = `المفعل حالياً (${data.bot_token_masked})`;
+                    document.getElementById('tgChatId').value = data.chat_id || '';
+                }
+            } catch(e) {}
+        }
+
+        async function saveTelegramSettings() {
+            const token = document.getElementById('tgBotToken').value.trim();
+            const chatId = document.getElementById('tgChatId').value.trim();
+
+            if (!chatId) {
+                alert('معرّف المحادثة Chat ID مطلوب.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/admin/telegram/settings', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ bot_token: token, chat_id: chatId })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر حفظ الإعدادات');
+                showToast('✅ تم حفظ إعدادات تيليغرام بنجاح!');
+                closeTelegramModal();
+            } catch (err) {
+                alert(`خطأ: ${err.message}`);
+            }
+        }
+
+        async function testTelegramConnection() {
+            const token = document.getElementById('tgBotToken').value.trim();
+            const chatId = document.getElementById('tgChatId').value.trim();
+
+            showToast('⏳ جاري إرسال رسالة فحص تجريبية...', '🔄');
+            try {
+                const res = await fetch('/api/v1/admin/telegram/test', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ bot_token: token, chat_id: chatId })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'فشل الاتصال');
+                showToast('🚀 وصلت الرسالة التجريبية إلى حسابك بتيليغرام بنجاح!');
+            } catch (err) {
+                alert(`خطأ في فحص تيليغرام: ${err.message}`);
+            }
+        }
+
+        // ── Smart WhatsApp & Token Modal ────────────────────────────
+        function openWaModal(machineId) {
+            const device = allDevices.find(d => d.machine_id === machineId);
+            if (!device) return;
+            currentWaDevice = device;
+
+            document.getElementById('waStoreName').innerText = `${device.store_name} (${device.machine_id})`;
+            document.getElementById('waPureKeyDisplay').innerText = device.current_token || 'لا يوجد كود مسجل';
+            selectWaTemplate('activation');
+            document.getElementById('waModal').classList.remove('hidden');
+        }
+
+        function closeWaModal() {
+            document.getElementById('waModal').classList.add('hidden');
+            currentWaDevice = null;
+        }
+
+        function selectWaTemplate(type) {
+            const d = currentWaDevice;
+            if (!d) return;
+
+            const btnAct = document.getElementById('btnTplAct');
+            const btnRem = document.getElementById('btnTplRem');
+            const btnRec = document.getElementById('btnTplRec');
+
+            btnAct.className = 'flex-1 py-1.5 rounded-xl font-bold bg-slate-900 text-slate-400 hover:text-white transition text-center';
+            btnRem.className = 'flex-1 py-1.5 rounded-xl font-bold bg-slate-900 text-slate-400 hover:text-white transition text-center';
+            btnRec.className = 'flex-1 py-1.5 rounded-xl font-bold bg-slate-900 text-slate-400 hover:text-white transition text-center';
+
+            const expDate = (d.expires_at || '').substring(0, 10);
+            let msg = '';
+
+            if (type === 'activation') {
+                btnAct.className = 'flex-1 py-1.5 rounded-xl font-bold bg-emerald-600 text-white transition text-center';
+                msg = `مرحباً ${d.store_name} 👋
+تم تفعيل ترخيص برنامج ماكس برو POS لجهازك بنجاح!
+
+📅 تاريخ الانتهاء: ${expDate}
+💻 معرّف الجهاز: ${d.machine_id}
+
+🔑 كود الترخيص الصافي:
+${d.current_token}
+
+📝 خطوات التفعيل السريعة:
+1. افتح برنامج ماكس برو.
+2. اضغط على خيار الترخيص في صفحة تسجيل الدخول.
+3. الصق الكود واضغط زر (تفعيل الكود).
+
+نسعد دائماً بخدمتكم! ✨`;
+            } else if (type === 'reminder') {
+                btnRem.className = 'flex-1 py-1.5 rounded-xl font-bold bg-amber-600 text-white transition text-center';
+                msg = `السلام عليكم ${d.store_name} 👋
+نود تذكيركم بأن اشتراك برنامج ماكس برو POS يوشك على الانتهاء خلال ${d.days_remaining} يوم (بتاريخ ${expDate}).
+
+يرجى التواصل معنا لتجديد الاشتراك لضمان استمرار عمل نقاط البيع بدون أي انقطاع. 
+شاكرين ثقتكم الغالية بنا! 🌟`;
+            } else if (type === 'receipt') {
+                btnRec.className = 'flex-1 py-1.5 rounded-xl font-bold bg-blue-600 text-white transition text-center';
+                msg = `مرحباً ${d.store_name} 👋
+تم تجديد اشتراك برنامج ماكس برو POS بنجاح! 🚀
+
+📅 الصلاحية الجديدة حتى: ${expDate}
+سيتحدث الترخيص تلقائياً في برنامجكم فور الاتصال بالإنترنت، ويمكنكم مواصلة البيع وإدارة المحل بكل سلاسة.
+
+شكراً لتعاملكم المستمر معنا! ✨`;
+            }
+
+            document.getElementById('waMsgContent').value = msg;
+        }
+
+        function copyWaText() {
+            const txt = document.getElementById('waMsgContent').value;
+            navigator.clipboard.writeText(txt);
+            showToast('📋 تم نسخ نص الرسالة الكامل للحافظة بنجاح!');
+        }
+
+        function openWhatsAppDirect() {
+            if (!currentWaDevice) return;
+            const cleanPhone = (currentWaDevice.phone || '').replace(/[^0-9]/g, '');
+            const txt = document.getElementById('waMsgContent').value;
+            const encoded = encodeURIComponent(txt);
+
+            if (cleanPhone) {
+                window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
+            } else {
+                window.open(`https://wa.me/?text=${encoded}`, '_blank');
+            }
+        }
+
+        // ── Add New Store Logic ────────────────────────────────────
+        function openNewModal() {
+            document.getElementById('newModal').classList.remove('hidden');
+        }
+
+        function closeNewModal() {
+            document.getElementById('newModal').classList.add('hidden');
+        }
+
+        function toggleCustomNewDays() {
+            const pType = document.getElementById('mPlanType').value;
+            const sec = document.getElementById('newCustomDaysSection');
+            if (pType === 'custom') sec.classList.remove('hidden');
+            else sec.classList.add('hidden');
+        }
+
+        async function submitNewDevice() {
+            const storeName = document.getElementById('mStoreName').value.trim();
+            const branchName = document.getElementById('mBranchName').value.trim();
+            const machineId = document.getElementById('mMachineId').value.trim().toUpperCase();
+            const companyName = document.getElementById('mCompanyName').value.trim();
+            const phone = document.getElementById('mPhone').value.trim();
+            const planType = document.getElementById('mPlanType').value;
+            const notes = document.getElementById('mNotes').value.trim();
+
+            if (!storeName || !machineId) {
+                alert('اسم المتجر ومعرّف الجهاز (Machine ID) كلاهما مطلوبان.');
+                return;
+            }
+
+            const payload = {
+                store_name: storeName,
+                branch_name: branchName,
+                company_name: companyName,
+                machine_id: machineId,
+                phone: phone,
+                notes: notes
+            };
+
+            if (planType === 'trial') {
+                payload.status = 'TRIAL';
+                payload.months = 0;
+            } else if (planType === 'custom') {
+                payload.status = 'ACTIVE';
+                const cDays = parseInt(document.getElementById('mCustomDays').value);
+                const cExp = document.getElementById('mExactExpiry').value;
+                if (cExp) payload.exact_expiry = cExp;
+                else if (cDays) payload.days = cDays;
+                else payload.days = 30;
+            } else {
+                payload.status = 'ACTIVE';
+                payload.months = parseInt(planType) || 12;
+            }
+
+            try {
+                const res = await fetch('/api/v1/admin/devices', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'تعذر إضافة المتجر');
+                closeNewModal();
+                showToast(`🎉 تم حفظ وتسجيل متجر [${storeName}] بنجاح!`);
+                loadDevices();
+            } catch (err) {
+                alert(`خطأ: ${err.message}`);
+            }
+        }
+
+        // ── Device Actions ─────────────────────────────────────────
+        async function toggleSuspend(machineId) {
+            try {
+                const res = await fetch('/api/v1/admin/suspend', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ machine_id: machineId })
+                });
+                const data = await res.json();
+                showToast(`تم تعديل حالة الجهاز إلى: ${data.status}`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        async function deleteDeviceConfirm(machineId) {
+            if (!confirm(`هل أنت متأكد من حذف الجهاز (${machineId}) من السيرفر نهائياً؟`)) return;
+            try {
+                const res = await fetch('/api/v1/admin/delete', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ machine_id: machineId })
+                });
+                showToast(`تم حذف الجهاز بنجاح.`);
+                loadDevices();
+            } catch (err) {
+                showToast(`❌ خطأ: ${err.message}`, '❌');
+            }
+        }
+
+        async function exportCSV() {
+            try {
+                const res = await fetch('/api/v1/admin/export/csv', { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('فشل تصدير البيانات');
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `maxpro_licenses_${new Date().toISOString().slice(0, 10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showToast('📊 تم تنزيل كشف Excel بنجاح!');
+            } catch(e) {
+                showToast(`❌ خطأ في تصدير البيانات: ${e.message}`, '❌');
+            }
+        }
+
+        function copyText(text, msg) {
+            navigator.clipboard.writeText(String(text || '').trim());
+            showToast(msg || 'تم النسخ للحافظة!');
+        }
+
+        function showToast(msg, icon = '✅') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastIcon').innerText = icon;
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 4500);
+        }
+
+        // Initialize & Auto-refresh (Guarded against autofill)
+        loadDevices();
+        setInterval(loadDevices, 20000);
+    </script>
+</body>
+</html>
