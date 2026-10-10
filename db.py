@@ -30,6 +30,7 @@ except ImportError:
         notify_status_changed = lambda *args, **kwargs: None  # type: ignore
 
 DB_PATH = Path(os.environ.get("MAXPRO_LICENSE_DB_PATH", Path(__file__).resolve().parent / "licenses.db"))
+BACKUP_JSON_PATH = Path(os.environ.get("MAXPRO_LICENSE_BACKUP_PATH", DB_PATH.parent / "licenses_backup.json"))
 
 
 def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
@@ -42,6 +43,99 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     except Exception:
         pass
     return conn
+
+
+def _save_db_backup(db_path: Optional[Path] = None) -> None:
+    """Save persistent JSON snapshot of all devices and settings."""
+    try:
+        conn = get_connection(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM devices")
+        devices = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM revoked_devices")
+        revoked = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM server_settings")
+        settings = [dict(r) for r in cur.fetchall()]
+
+        data = {
+            "version": 1,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "devices": devices,
+            "revoked_devices": revoked,
+            "server_settings": settings,
+        }
+        target_path = BACKUP_JSON_PATH if db_path is None else (Path(db_path).parent / "licenses_backup.json")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        import json
+        target_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _restore_db_from_backup_if_empty(db_path: Optional[Path] = None) -> None:
+    """Restore devices from persistent JSON snapshot if the database file was reset."""
+    try:
+        target_path = BACKUP_JSON_PATH if db_path is None else (Path(db_path).parent / "licenses_backup.json")
+        if not target_path.exists():
+            return
+        import json
+        data = json.loads(target_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return
+
+        conn = get_connection(db_path)
+        devices = data.get("devices", [])
+        revoked = data.get("revoked_devices", [])
+        settings = data.get("server_settings", [])
+
+        with conn:
+            for d in devices:
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO devices (
+                        machine_id, store_name, phone, status, plan_code, plan_name_ar,
+                        tier, expires_at, grace_days, current_token, last_sync_at, created_at,
+                        notes, branch_name, company_name, today_sales, today_profit,
+                        today_invoices, cash_in_drawer, metrics_updated_at, owner_pin
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        d.get("machine_id", ""),
+                        d.get("store_name", ""),
+                        d.get("phone", ""),
+                        d.get("status", "ACTIVE"),
+                        d.get("plan_code", "12_months"),
+                        d.get("plan_name_ar", "اشتراك سنوي"),
+                        d.get("tier", "pro"),
+                        d.get("expires_at", ""),
+                        d.get("grace_days", 5),
+                        d.get("current_token", ""),
+                        d.get("last_sync_at", ""),
+                        d.get("created_at", ""),
+                        d.get("notes", ""),
+                        d.get("branch_name", ""),
+                        d.get("company_name", ""),
+                        d.get("today_sales", 0.0),
+                        d.get("today_profit", 0.0),
+                        d.get("today_invoices", 0),
+                        d.get("cash_in_drawer", 0.0),
+                        d.get("metrics_updated_at", ""),
+                        d.get("owner_pin", "1234"),
+                    ),
+                )
+            for r in revoked:
+                conn.execute(
+                    "INSERT OR IGNORE INTO revoked_devices (machine_id, revoked_at, reason) VALUES (?, ?, ?)",
+                    (r.get("machine_id", ""), r.get("revoked_at", ""), r.get("reason", "deleted_by_admin")),
+                )
+            for s in settings:
+                conn.execute(
+                    "INSERT OR IGNORE INTO server_settings (key, value) VALUES (?, ?)",
+                    (s.get("key", ""), s.get("value", "")),
+                )
+    except Exception:
+        pass
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, col_type: str) -> None:
@@ -127,6 +221,13 @@ def init_db(db_path: Optional[Path] = None) -> None:
             )
             """
         )
+
+        try:
+            cur = conn.execute("SELECT count(*) FROM devices")
+            if cur.fetchone()[0] == 0:
+                _restore_db_from_backup_if_empty(db_path)
+        except Exception:
+            pass
 
 
 def is_device_revoked(machine_id: str, db_path: Optional[Path] = None) -> bool:
@@ -287,6 +388,7 @@ def register_or_create_device(
     notes: str = "",
     branch_name: str = "",
     company_name: str = "",
+    current_token: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     mid = machine_id.strip().upper()
@@ -302,11 +404,18 @@ def register_or_create_device(
                 exp_dt = exp_dt.replace(tzinfo=timezone.utc)
             if exp_dt.hour == 0 and exp_dt.minute == 0 and exp_dt.second == 0:
                 exp_dt = exp_dt.replace(hour=23, minute=59, second=59)
-            plan_code = "custom_date"
-            plan_ar = f"اشتراك محدد التاريخ ({exp_dt.strftime('%Y-%m-%d')})"
-            actual_status = "ACTIVE"
-            actual_tier = tier
-            actual_grace = grace_days
+            if status in ("TRIAL", "TRIAL_EXPIRED") or tier == "trial":
+                plan_code = "trial"
+                plan_ar = "نسخة تجريبية مجانية (14 يوماً)"
+                actual_status = status if status in ("TRIAL", "TRIAL_EXPIRED") else "TRIAL"
+                actual_tier = "trial"
+                actual_grace = 0
+            else:
+                plan_code = "custom_date"
+                plan_ar = f"اشتراك محدد التاريخ ({exp_dt.strftime('%Y-%m-%d')})"
+                actual_status = "ACTIVE"
+                actual_tier = tier
+                actual_grace = grace_days
         except Exception:
             exp_dt = now + timedelta(days=365)
             plan_code = "12_months"
@@ -364,15 +473,18 @@ def register_or_create_device(
         actual_tier = tier
         actual_grace = grace_days
 
-    token, _ = build_and_sign_token(
-        machine_id=mid,
-        store_name=store_name,
-        expires_at=exp_dt,
-        plan_code=plan_code,
-        plan_name_ar=plan_ar,
-        tier=actual_tier,
-        grace_days=actual_grace,
-    )
+    if current_token and str(current_token).strip():
+        token = str(current_token).strip()
+    else:
+        token, _ = build_and_sign_token(
+            machine_id=mid,
+            store_name=store_name,
+            expires_at=exp_dt,
+            plan_code=plan_code,
+            plan_name_ar=plan_ar,
+            tier=actual_tier,
+            grace_days=actual_grace,
+        )
 
     with conn:
         conn.execute(
@@ -430,6 +542,7 @@ def register_or_create_device(
     if not existing:
         notify_new_store_onboarded(saved, db_path=db_path)
 
+    _save_db_backup(db_path=db_path)
     return saved
 
 
@@ -485,6 +598,7 @@ def update_device(
         actor="admin",
         db_path=db_path,
     )
+    _save_db_backup(db_path=db_path)
     return updated
 
 
@@ -660,6 +774,7 @@ def renew_device(
         db_path=db_path,
     )
     notify_subscription_renewed(updated, details_text, db_path=db_path)
+    _save_db_backup(db_path=db_path)
     return updated
 
 
@@ -718,6 +833,7 @@ def extend_trial(machine_id: str, days: int = 7, db_path: Optional[Path] = None)
         db_path=db_path,
     )
     notify_subscription_renewed(updated, f"تمديد تجريبي {days} أيام", db_path=db_path)
+    _save_db_backup(db_path=db_path)
     return updated
 
 
@@ -746,6 +862,7 @@ def toggle_suspend(machine_id: str, db_path: Optional[Path] = None) -> Dict[str,
         db_path=db_path,
     )
     notify_status_changed(updated, is_suspending, db_path=db_path)
+    _save_db_backup(db_path=db_path)
     return updated
 
 
@@ -792,4 +909,5 @@ def delete_device(machine_id: str, db_path: Optional[Path] = None) -> bool:
             actor="admin",
             db_path=db_path,
         )
+    _save_db_backup(db_path=db_path)
     return ok

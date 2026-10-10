@@ -5,13 +5,14 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 # Default Master Private Key (Vendor secret)
 # In production, set the MAXPRO_MASTER_PRIVATE_KEY_B64 environment variable.
 DEFAULT_FALLBACK_PRIV_KEY_B64 = "HXZv2q/GRrl2l08CCpAB7GiyoCsmgpjTP5nlNikB57o="
+MASTER_PUBLIC_KEY_B64 = "MLInzK8PM9hTWVf3pO/l6EM/PXtZajUu7PXQwsf34N0="
 LICENSE_PREFIX = "MPLIC-"
 
 
@@ -83,3 +84,49 @@ def build_and_sign_token(
     priv_bytes = get_private_key_bytes()
     token = sign_license_payload(payload, priv_bytes)
     return token, payload
+
+
+def verify_license_token(license_str: str, public_key_b64: Optional[str] = None) -> Dict[str, Any]:
+    """Verify an MPLIC-... license token with the master public key.
+    
+    Returns the verified payload dictionary.
+    Raises ValueError on invalid token format, tamper, or signature failure.
+    """
+    from cryptography.exceptions import InvalidSignature
+
+    pub_key_str = public_key_b64 or MASTER_PUBLIC_KEY_B64
+    clean_str = str(license_str or "").strip()
+    if not clean_str.startswith(LICENSE_PREFIX):
+        raise ValueError("صيغة كود الترخيص غير صالحة (يجب أن تبدأ بـ MPLIC-)")
+
+    token_body = clean_str[len(LICENSE_PREFIX):].strip()
+    try:
+        envelope_json = base64.urlsafe_b64decode(token_body.encode("ascii"))
+        envelope = json.loads(envelope_json.decode("utf-8"))
+    except Exception as exc:
+        raise ValueError("كود الترخيص تالف أو غير صالح للفك") from exc
+
+    if not isinstance(envelope, dict) or "d" not in envelope or "s" not in envelope:
+        raise ValueError("هيكل حزمة الترخيص غير مطابق للمواصفات")
+
+    try:
+        data_bytes = base64.urlsafe_b64decode(envelope["d"].encode("ascii"))
+        sig_bytes = base64.urlsafe_b64decode(envelope["s"].encode("ascii"))
+    except Exception as exc:
+        raise ValueError("بيانات الترخيص المشفرة غير صالحة") from exc
+
+    pub_bytes = base64.b64decode(pub_key_str.encode("ascii"))
+    pub = ed25519.Ed25519PublicKey.from_public_bytes(pub_bytes)
+
+    try:
+        pub.verify(sig_bytes, data_bytes)
+    except InvalidSignature as exc:
+        raise ValueError("فشل التحقق من التوقيع الرقمي للترخيص (كود مزور أو تم التعديل عليه)") from exc
+
+    try:
+        payload = json.loads(data_bytes.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("محتوى الترخيص غير صالح")
+        return payload
+    except Exception as exc:
+        raise ValueError("فشل قراءة بيانات الترخيص") from exc

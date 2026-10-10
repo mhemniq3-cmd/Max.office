@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -349,6 +350,7 @@ async def client_sync(req: SyncRequest):
             "has_update": False,
             "status": "REVOKED",
             "is_revoked": True,
+            "explicit_revoke": True,
             "can_sell": False,
             "message": "تم إلغاء وحذف ترخيص هذا الجهاز نهائياً من قبل الإدارة. تم إيقاف النظام.",
         }
@@ -357,29 +359,84 @@ async def client_sync(req: SyncRequest):
 
     # 2. If device is not in database:
     if not device:
-        # If client provided a current_key, that means it had an existing subscription that the admin deleted!
+        # Check if client holds a cryptographically authentic, signed license key!
+        token_payload = None
         if req.current_key:
-            return {
-                "has_update": False,
-                "status": "REVOKED",
-                "is_revoked": True,
-                "can_sell": False,
-                "message": "تم حذف هذا الجهاز من لوحة تراخيص النظام. تم إيقاف الاشتراك.",
-            }
+            try:
+                try:
+                    from cloud_server.signer import verify_license_token
+                except ImportError:
+                    from signer import verify_license_token
+                token_payload = verify_license_token(req.current_key)
+            except Exception:
+                try:
+                    from services.licensing.crypto import verify_license_key
+                    token_payload = verify_license_key(req.current_key)
+                except Exception:
+                    token_payload = None
 
-        # Completely fresh installation without any prior license: only create a trial
-        store_title = req.store_name.strip() or f"متجر تجريبي ({mid[-4:]})"
-        device = register_or_create_device(
-            machine_id=mid,
-            store_name=store_title,
-            phone="",
-            status="TRIAL",
-            months=0,
-            days=14,
-            tier="trial",
-            notes="عميل جديد بدأ النسخة التجريبية (مسجل تلقائياً)",
-            branch_name=req.branch_name or "",
-        )
+        if token_payload and isinstance(token_payload, dict):
+            licensed_mid = str(token_payload.get("mid") or "").strip().upper()
+            if licensed_mid == mid:
+                # ── SELF-HEALING / AUTO-RESTORATION ──
+                # The client holds an authentic cryptographic token signed by our vendor key.
+                # Auto-restore the device into the database so it reappears in the dashboard!
+                exp_str = str(token_payload.get("exp") or "").strip()
+                store_title = str(token_payload.get("store") or req.store_name or f"متجر ({mid[-4:]})").strip()
+                plan_code = str(token_payload.get("plan") or "12_months")
+                plan_ar = str(token_payload.get("plan_ar") or "اشتراك معتمد")
+                tier_val = str(token_payload.get("tier") or "pro")
+                grace_val = int(token_payload.get("grace") or 5)
+
+                now_utc = datetime.now(timezone.utc)
+                try:
+                    exp_dt = datetime.fromisoformat(exp_str)
+                    if exp_dt.tzinfo is None:
+                        exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                    is_expired = (exp_dt <= now_utc)
+                except Exception:
+                    is_expired = False
+
+                if plan_code == "trial":
+                    status_val = "TRIAL_EXPIRED" if is_expired else "TRIAL"
+                else:
+                    status_val = "EXPIRED" if is_expired else "ACTIVE"
+
+                device = register_or_create_device(
+                    machine_id=mid,
+                    store_name=store_title,
+                    phone="",
+                    status=status_val,
+                    exact_expiry=exp_str if exp_str else None,
+                    tier=tier_val,
+                    grace_days=grace_val,
+                    notes="تمت استعادة الترخيص تلقائياً من التوقيع الرقمي المعتمد للعميل بعد إعادة تشغيل السيرفر",
+                    branch_name=req.branch_name or "",
+                    current_token=req.current_key,
+                )
+
+                add_audit_log(
+                    machine_id=mid,
+                    store_name=store_title,
+                    action="AUTO_RESTORE",
+                    details=f"استعادة تلقائية لترخيص [{store_title}] من التوقيع الرقمي للعميل",
+                    actor="system_auto_heal",
+                )
+
+        if not device:
+            # Completely fresh installation without any prior license: only create a trial
+            store_title = req.store_name.strip() or f"متجر تجريبي ({mid[-4:]})"
+            device = register_or_create_device(
+                machine_id=mid,
+                store_name=store_title,
+                phone="",
+                status="TRIAL",
+                months=0,
+                days=14,
+                tier="trial",
+                notes="عميل جديد بدأ النسخة التجريبية (مسجل تلقائياً)",
+                branch_name=req.branch_name or "",
+            )
 
     # 3. Check suspension
     if device.get("status") == "SUSPENDED":
@@ -428,6 +485,7 @@ async def client_sync(req: SyncRequest):
 
     return {
         "has_update": False,
+        "status": device.get("status", "ACTIVE"),
         "license_key": server_token,
         "expires_at": device.get("expires_at"),
         "plan_name_ar": device.get("plan_name_ar"),
