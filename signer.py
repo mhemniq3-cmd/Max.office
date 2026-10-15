@@ -9,20 +9,21 @@ from typing import Any, Dict, Optional, Tuple
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-# Default Master Private Key (Vendor secret)
-# In production, set the MAXPRO_MASTER_PRIVATE_KEY_B64 environment variable.
-DEFAULT_FALLBACK_PRIV_KEY_B64 = "HXZv2q/GRrl2l08CCpAB7GiyoCsmgpjTP5nlNikB57o="
 MASTER_PUBLIC_KEY_B64 = "MLInzK8PM9hTWVf3pO/l6EM/PXtZajUu7PXQwsf34N0="
 LICENSE_PREFIX = "MPLIC-"
 
 
 def get_private_key_bytes() -> bytes:
-    """Load vendor private key from environment or fallback key."""
+    """Load vendor private key from environment or secure developer file.
+    
+    Zero hardcoded secrets policy: never falls back to a hardcoded key.
+    Raises RuntimeError if neither MAXPRO_MASTER_PRIVATE_KEY_B64 nor authorized developer secret is present.
+    """
     env_key = os.environ.get("MAXPRO_MASTER_PRIVATE_KEY_B64", "").strip()
     if env_key:
         return base64.b64decode(env_key)
 
-    # Check local developer secrets if running inside the repository
+    # Check local developer secrets if running inside an authorized developer environment
     local_key_file = Path(__file__).resolve().parent.parent / "developer_secrets" / "master_private.key"
     if local_key_file.exists():
         try:
@@ -32,7 +33,10 @@ def get_private_key_bytes() -> bytes:
         except Exception:
             pass
 
-    return base64.b64decode(DEFAULT_FALLBACK_PRIV_KEY_B64)
+    raise RuntimeError(
+        "مفتاح التوقيع الخاص غير مهيأ. يجب ضبط متغير البيئة MAXPRO_MASTER_PRIVATE_KEY_B64 "
+        "في بيئة السيرفر السحابي أو توفير ملف المفتاح في بيئة التطوير المحمية."
+    )
 
 
 def canonical_json_bytes(data: Dict[str, Any]) -> bytes:

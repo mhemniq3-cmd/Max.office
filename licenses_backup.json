@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "exported_at": "2026-10-14T15:37:57.361435+00:00",
+  "devices": [
+    {
+      "id": 1,
+      "machine_id": "MP-TEST-9999-8888-7777",
+      "store_name": "متجر الفحص الذاتي",
+      "phone": "",
+      "status": "ACTIVE",
+      "plan_code": "custom_date",
+      "plan_name_ar": "اشتراك محدد التاريخ (2027-01-12)",
+      "tier": "pro",
+      "expires_at": "2027-01-12T23:59:59+00:00",
+      "grace_days": 5,
+      "current_token": "MPLIC-eyJ2IjoxLCJkIjoiZXlKbGVIQWlPaUl5TURJM0xUQXhMVEV5VkRJek9qVTVPalU1SWl3aVptVmhkSFZ5WlhNaU9sc2lZV3hzSWwwc0ltZHlZV05sSWpvMUxDSnBZWFFpT2lJeU1ESTJMVEV3TFRFMFZERTFPak0zT2pVM0lpd2liV2xrSWpvaVRWQXRWRVZUVkMwNU9UazVMVGc0T0RndE56YzNOeUlzSW5Cc1lXNGlPaUl4TWw5dGIyNTBhSE1pTENKd2JHRnVYMkZ5SWpvaTJLZll0TmlxMkxIWXA5bURJTml6MlliWmlObUtJQ2d4TWlEWXRObUgyTEhZcDltTElDMGdVSEp2S1NJc0luTjBiM0psSWpvaTJZWFlxdGlzMkxFZzJLZlpoTm1CMkszWXRTRFlwOW1FMkxEWXA5aXEyWW9pTENKMGFXVnlJam9pY0hKdkluMD0iLCJzIjoiSGl4clhCWExVN2FLeUdRb0x0MVdyUVh3MjIza3NhRnNBQ0FGTFpvOGxPd1I4V2FyeVNEdXZuamd6NDh4UDRyTjdMNWgxcXdibE9nZDVQS0lXdHdaQnc9PSJ9",
+      "last_sync_at": null,
+      "created_at": "2026-10-14T15:37:57.298718+00:00",
+      "notes": "تمت استعادة الترخيص تلقائياً من التوقيع الرقمي المعتمد للعميل بعد إعادة تشغيل السيرفر",
+      "branch_name": "",
+      "company_name": "",
+      "today_sales": 0.0,
+      "today_profit": 0.0,
+      "today_invoices": 0,
+      "cash_in_drawer": 0.0,
+      "metrics_updated_at": "",
+      "owner_pin": "1234"
+    }
+  ],
+  "revoked_devices": [],
+  "server_settings": []
+}

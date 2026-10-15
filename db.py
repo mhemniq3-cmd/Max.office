@@ -389,13 +389,19 @@ def register_or_create_device(
     branch_name: str = "",
     company_name: str = "",
     current_token: Optional[str] = None,
+    is_admin: bool = False,
     db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     mid = machine_id.strip().upper()
-    unrevoke_device(mid, db_path=db_path)
+    if is_admin:
+        unrevoke_device(mid, db_path=db_path)
     now = datetime.now(timezone.utc)
     conn = get_connection(db_path)
     existing = get_device(mid, db_path=db_path)
+
+    # Protect SUSPENDED devices from unauthorized modification or reactivation
+    if existing and existing.get("status") == "SUSPENDED" and not is_admin:
+        return existing
 
     if exact_expiry:
         try:
@@ -498,13 +504,34 @@ def register_or_create_device(
             ON CONFLICT(machine_id) DO UPDATE SET
                 store_name = excluded.store_name,
                 phone = CASE WHEN excluded.phone != '' THEN excluded.phone ELSE devices.phone END,
-                status = excluded.status,
-                plan_code = excluded.plan_code,
-                plan_name_ar = excluded.plan_name_ar,
-                tier = excluded.tier,
-                expires_at = excluded.expires_at,
-                grace_days = excluded.grace_days,
-                current_token = excluded.current_token,
+                status = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.status
+                    ELSE excluded.status
+                END,
+                plan_code = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.plan_code
+                    ELSE excluded.plan_code
+                END,
+                plan_name_ar = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.plan_name_ar
+                    ELSE excluded.plan_name_ar
+                END,
+                tier = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.tier
+                    ELSE excluded.tier
+                END,
+                expires_at = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.expires_at
+                    ELSE excluded.expires_at
+                END,
+                grace_days = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.grace_days
+                    ELSE excluded.grace_days
+                END,
+                current_token = CASE
+                    WHEN devices.status = 'SUSPENDED' AND ? = 0 THEN devices.current_token
+                    ELSE excluded.current_token
+                END,
                 notes = CASE WHEN excluded.notes != '' THEN excluded.notes ELSE devices.notes END,
                 branch_name = CASE WHEN excluded.branch_name != '' THEN excluded.branch_name ELSE devices.branch_name END,
                 company_name = CASE WHEN excluded.company_name != '' THEN excluded.company_name ELSE devices.company_name END
@@ -524,6 +551,13 @@ def register_or_create_device(
                 notes.strip(),
                 branch_name.strip(),
                 company_name.strip(),
+                1 if is_admin else 0,
+                1 if is_admin else 0,
+                1 if is_admin else 0,
+                1 if is_admin else 0,
+                1 if is_admin else 0,
+                1 if is_admin else 0,
+                1 if is_admin else 0,
             ),
         )
 
@@ -843,7 +877,7 @@ def toggle_suspend(machine_id: str, db_path: Optional[Path] = None) -> Dict[str,
     if not device:
         raise ValueError(f"الجهاز غير مسجل: {mid}")
 
-    is_suspending = (device["status"] == "ACTIVE")
+    is_suspending = (device["status"] != "SUSPENDED")
     new_status = "SUSPENDED" if is_suspending else "ACTIVE"
     conn = get_connection(db_path)
     with conn:
